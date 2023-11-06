@@ -13,12 +13,15 @@
 Pixel take different amount of time to calculate, for example ff the number is stable and does not diverge,  the pixel is black. Therefore it will iterate MAXITER iteration to calculate it.  But if the number diverges it will  run the calculation a few times.
 So, the calculation for a pixel that diverges fast or a stable pixel, will have quite the difference computer load than a pixel that diverges fast. 
 
+Due to black pixel flocking together, than an even spread over the picture, it's quite clear that one thread will do more than the others. 
+
 \section{Describe different load-balancing methods that would help reducing the performance
 loss due to load-imbalance. You should be able to come up with at least two.
 \textit{Hint: Observe that the load-balancing method must be valid for any picture computed, not only the default picture.}}
+With the naive implementation, the chunks are fairly large. To even out the load-balance, we could make the computing chunks interleaving rows/columns. This should be a more balanced approach. 
 \begin{enumerate}
     \item Round robbing
-    \item 
+    \item Some kind of weighted Round robbing? E.g we can see that edges do not contain any black pixel, so they are easier to calculate, then we should but more threads in the middle that take care of the black hole. 
 \end{enumerate}
 
 
