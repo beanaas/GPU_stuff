@@ -24,6 +24,8 @@
 color_t *color = NULL;
 
 #if NB_THREADS > 0
+pthread_mutex_t lock;
+int curr_height = 0;
 // Compiled only when several threads are used
 struct mandelbrot_thread
 {
@@ -49,6 +51,8 @@ struct mandelbrot_timing **timing;
 #endif
 
 struct mandelbrot_param mandelbrot_param;
+
+
 
 static int num_colors(struct mandelbrot_param* param)
 {
@@ -161,47 +165,34 @@ parallel_mandelbrot(struct mandelbrot_thread *args, struct mandelbrot_param *par
 	
 		// Define the region compute_chunk() has to compute
 		// Entire height: from 0 to picture's height
-		
-			int chunk_size_h = parameters->height / NB_THREADS;
-			int chunk_size_w= parameters->width / NB_THREADS;
 
-			for (int i = args->id; i < NB_THREADS; i += 1) {
-				for(int j = 0; j < NB_THREADS; j += 1) {
-					
-					parameters->begin_w = ((i + j) % NB_THREADS) * chunk_size_w;
-					parameters->end_w = ((i + j) % NB_THREADS) * chunk_size_w + chunk_size_w;
 
-					parameters->begin_h = i * chunk_size_h;
-					parameters->end_h = i * chunk_size_h + chunk_size_h;
-					compute_chunk(parameters);
-				}
-				
-		// Entire width: from 0 to picture's width	
-
+		for (int i = args->id; i < parameters->height; i += NB_THREADS) {
+				parameters->begin_w = 0;
+				parameters->end_w = parameters->width;
+				parameters->begin_h = i;
+				parameters->end_h = i+1;
+				compute_chunk(parameters);
 			}
-	
-		
 
-		// Go
 	
 #endif
 // Compiled only if LOADBALANCE = 2
 #if LOADBALANCE == 2
-	// *optional* replace this code with another load-balancing solution.
-	// Only thread of ID 0 compute the whole picture
-	if(args->id == 0)
-	{
-		// Define the region compute_chunk() has to compute
-		// Entire height: from 0 to picture's height
-		parameters->begin_h = 0;
-		parameters->end_h = parameters->height;
-		// Entire width: from 0 to picture's width
+	while(curr_height+1<parameters->height){	
+		pthread_mutex_lock(&lock);
+		curr_height = curr_height+1;
+		pthread_mutex_unlock(&lock);
+
+		parameters->begin_h = curr_height-1;
+		parameters->end_h = curr_height;
 		parameters->begin_w = 0;
 		parameters->end_w = parameters->width;
 
 		// Go
 		compute_chunk(parameters);
 	}
+
 #endif
 }
 /***** end *****/
