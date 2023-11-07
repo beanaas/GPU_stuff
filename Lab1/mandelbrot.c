@@ -138,29 +138,10 @@ parallel_mandelbrot(struct mandelbrot_thread *args, struct mandelbrot_param *par
 #if LOADBALANCE == 0
 	// Replace this code with a naive *parallel* implementation.
 	// Only thread of ID 0 compute the whole picture
-	if(args->id == 0)
-	{
-		// Define the region compute_chunk() has to compute
-		// Entire height: from 0 to picture's height
-
-		parameters->begin_h = 0;
-		parameters->end_h = parameters->height;
-		// Entire width: from 0 to picture's width
-		parameters->begin_w = 0;
-		parameters->end_w = parameters->width;
-
-		// Go
-		compute_chunk(parameters);
-	}
-#endif
-// Compiled only if LOADBALANCE = 1
-//NAIVE IMPLEMENTATION OF LOAD BALANCING
-#if LOADBALANCE == 1
-	// Replace this code with your load-balanced smarter solution.
-	// Only thread of ID 0 compute the whole picture
 	
 		// Define the region compute_chunk() has to compute
 		// Entire height: from 0 to picture's height
+
 		int chunk_size = parameters->height / NB_THREADS;
 		parameters->begin_h = args->id * chunk_size;
 		parameters->end_h = args->id * chunk_size + chunk_size;
@@ -170,6 +151,38 @@ parallel_mandelbrot(struct mandelbrot_thread *args, struct mandelbrot_param *par
 
 		// Go
 		compute_chunk(parameters);
+	
+#endif
+// Compiled only if LOADBALANCE = 1
+//NAIVE IMPLEMENTATION OF LOAD BALANCING
+#if LOADBALANCE == 1
+	// Replace this code with your load-balanced smarter solution.
+	// Only thread of ID 0 compute the whole picture
+	
+		// Define the region compute_chunk() has to compute
+		// Entire height: from 0 to picture's height
+		
+			int chunk_size_h = parameters->height / NB_THREADS;
+			int chunk_size_w= parameters->width / NB_THREADS;
+
+			for (int i = args->id; i < NB_THREADS; i += 1) {
+				for(int j = 0; j < NB_THREADS; j += 1) {
+					
+					parameters->begin_w = ((i + j) % NB_THREADS) * chunk_size_w;
+					parameters->end_w = ((i + j) % NB_THREADS) * chunk_size_w + chunk_size_w;
+
+					parameters->begin_h = i * chunk_size_h;
+					parameters->end_h = i * chunk_size_h + chunk_size_h;
+					compute_chunk(parameters);
+				}
+				
+		// Entire width: from 0 to picture's width	
+
+			}
+	
+		
+
+		// Go
 	
 #endif
 // Compiled only if LOADBALANCE = 2
