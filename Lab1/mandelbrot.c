@@ -142,6 +142,7 @@ parallel_mandelbrot(struct mandelbrot_thread *args, struct mandelbrot_param *par
 	{
 		// Define the region compute_chunk() has to compute
 		// Entire height: from 0 to picture's height
+
 		parameters->begin_h = 0;
 		parameters->end_h = parameters->height;
 		// Entire width: from 0 to picture's width
@@ -153,22 +154,23 @@ parallel_mandelbrot(struct mandelbrot_thread *args, struct mandelbrot_param *par
 	}
 #endif
 // Compiled only if LOADBALANCE = 1
+//NAIVE IMPLEMENTATION OF LOAD BALANCING
 #if LOADBALANCE == 1
 	// Replace this code with your load-balanced smarter solution.
 	// Only thread of ID 0 compute the whole picture
-	if(args->id == 0)
-	{
+	
 		// Define the region compute_chunk() has to compute
 		// Entire height: from 0 to picture's height
-		parameters->begin_h = 0;
-		parameters->end_h = parameters->height;
+		int chunk_size = parameters->height / NB_THREADS;
+		parameters->begin_h = args->id * chunk_size;
+		parameters->end_h = args->id * chunk_size + chunk_size;
 		// Entire width: from 0 to picture's width
 		parameters->begin_w = 0;
 		parameters->end_w = parameters->width;
 
 		// Go
 		compute_chunk(parameters);
-	}
+	
 #endif
 // Compiled only if LOADBALANCE = 2
 #if LOADBALANCE == 2
