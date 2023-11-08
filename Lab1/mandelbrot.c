@@ -145,10 +145,19 @@ parallel_mandelbrot(struct mandelbrot_thread *args, struct mandelbrot_param *par
 	
 		// Define the region compute_chunk() has to compute
 		// Entire height: from 0 to picture's height
-
+		int remainder = parameters->height % NB_THREADS;
 		int chunk_size = parameters->height / NB_THREADS;
-		parameters->begin_h = args->id * chunk_size;
-		parameters->end_h = args->id * chunk_size + chunk_size;
+		if(remainder!=0 && args->id==(NB_THREADS-1)){
+			parameters->begin_h = args->id * chunk_size;
+			parameters->end_h = args->id * chunk_size + chunk_size + remainder;
+		
+		}
+		else{
+			parameters->begin_h = args->id * chunk_size;
+			parameters->end_h = args->id * chunk_size + chunk_size;
+		}
+		
+		
 		// Entire width: from 0 to picture's width
 		parameters->begin_w = 0;
 		parameters->end_w = parameters->width;
