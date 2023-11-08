@@ -188,8 +188,6 @@ parallel_mandelbrot(struct mandelbrot_thread *args, struct mandelbrot_param *par
 		parameters->end_h = curr_height;
 		parameters->begin_w = 0;
 		parameters->end_w = parameters->width;
-
-		// Go
 		compute_chunk(parameters);
 	}
 
