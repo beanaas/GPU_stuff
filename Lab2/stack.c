@@ -62,10 +62,17 @@ stack_check(stack_t *stack)
 }
 
 int /* Return the type you prefer */
-stack_push(/* Make your own signature */)
+stack_push(int val, stack_t stack)
 {
+  node_t node;
+  node.val = val;
 #if NON_BLOCKING == 0
   // Implement a lock_based stack
+  pthread_mutex_lock(&lock);
+  node.next = stack.head;
+  stack.head = &node;
+  pthread_mutex_unlock(&lock);
+  
 #elif NON_BLOCKING == 1
   // Implement a harware CAS-based stack
 #else
