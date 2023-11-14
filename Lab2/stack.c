@@ -45,6 +45,8 @@
 #endif
 #endif
 
+
+
 int
 stack_check(stack_t *stack)
 {
@@ -90,7 +92,7 @@ stack_push(int val, stack_t *stack)
 
 int stack_pop(stack_t *stack)
 {
-node_t *temp = NULL; 
+node_t *temp; 
 int res; 
 #if NON_BLOCKING == 0
   assert(stack_check(stack));

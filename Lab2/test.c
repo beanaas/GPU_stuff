@@ -180,6 +180,12 @@ test_push_safe()
   stack_push(5, stack);
 
   printf("value %d", stack->head->val);
+  printf("value %d", stack->head->next->val);
+
+
+  printf("value %d", stack->head->next->next->val);
+  stack_pop(stack);
+  stack_pop(stack);
 
   // check if the stack is in a consistent state
   int res = assert(stack_check(stack));
@@ -193,12 +199,16 @@ test_push_safe()
 int
 test_pop_safe()
 {
-  //stack_pop(stack); 
-  int t = stack_pop(stack); 
-  printf("\n\n==== %d", t); 
-  int t2 = stack_pop(stack); 
-  printf("\n\n==== %d", t2); 
+  stack_push(1, stack);
+  stack_push(2, stack);
+  stack_push(5, stack);
   int res = assert(stack->head == NULL);
+  int val = stack_pop(stack);
+  printf("value1 %d", val);
+  val = stack_pop(stack);
+  printf(" value2 %d", val);
+  val = stack_pop(stack);
+  printf(" value3 %d", val);
 
   // Same as the test above for parallel pop operation
 

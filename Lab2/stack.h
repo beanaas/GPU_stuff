@@ -27,11 +27,12 @@
 #ifndef STACK_H
 #define STACK_H
 
-typedef struct node
+struct node
 {
   int val;
   struct node *next;
-} node_t;
+}; 
+typedef struct node node_t;
 
 
 
