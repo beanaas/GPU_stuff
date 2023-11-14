@@ -26,25 +26,29 @@
 
 #ifndef STACK_H
 #define STACK_H
-
+#if NON_BLOCKING == 0
 pthread_mutex_t lock;
-typedef struct node node_t;
-struct node
+#endif
+typedef struct node
 {
   int val;
-  node_t *next;
-};
+  struct node *next;
+} node_t;
 
 
 
 struct stack
 {
   node_t *head;
+  #if NON_BLOCKING == 0
+  pthread_mutex_t lock;
+  #endif
 };
 typedef struct stack stack_t;
 
-int stack_push(int, stack_t);
-int stack_pop(/* Make your own signature */);
+int stack_push(int, stack_t *stack);
+int stack_pop(stack_t *stack);
+stack_t* stack_init();
 
 /* Use this to check if your stack is in a consistent state from time to time */
 int stack_check(stack_t *stack);

@@ -142,15 +142,16 @@ test_setup()
   data = DATA_VALUE;
 
   // Allocate a new stack and reset its values
-  pthread_mutex_init(&lock, NULL);
   stack = malloc(sizeof(stack_t));
-  node_t *node_a = malloc(sizeof(node_t));
-  node_a->val = 0;
-  node_a->next = NULL;
+  pthread_mutex_init(&(stack->lock), NULL);
+
+  //node_t *node_a = malloc(sizeof(node_t));
+  // node_a->val = 10;
+  // node_a->next = NULL;
 
   // Reset explicitely all members to a well-known initial value
   // For instance (to be deleted as your stack design progresses):
-  stack->head = node_a;
+  //stack->head = node_a;
 }
 
 void
@@ -175,6 +176,8 @@ test_push_safe()
 
   // Do some work
   stack_push(1, stack);
+  stack_push(2, stack);
+  stack_push(5, stack);
 
   printf("value %d", stack->head->val);
 
@@ -190,13 +193,17 @@ test_push_safe()
 int
 test_pop_safe()
 {
-
-  int res = assert(stack->head != NULL);
+  //stack_pop(stack); 
+  int t = stack_pop(stack); 
+  printf("\n\n==== %d", t); 
+  int t2 = stack_pop(stack); 
+  printf("\n\n==== %d", t2); 
+  int res = assert(stack->head == NULL);
 
   // Same as the test above for parallel pop operation
 
   // For now, this test always fails
-  return 0;
+  return res;
 }
 
 // 3 Threads should be enough to raise and detect the ABA problem
