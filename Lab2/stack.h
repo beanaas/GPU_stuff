@@ -26,9 +26,7 @@
 
 #ifndef STACK_H
 #define STACK_H
-#if NON_BLOCKING == 0
-pthread_mutex_t lock;
-#endif
+
 typedef struct node
 {
   int val;
