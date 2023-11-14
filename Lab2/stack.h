@@ -39,9 +39,7 @@ typedef struct node node_t;
 struct stack
 {
   node_t *head;
-  #if NON_BLOCKING == 0
   pthread_mutex_t lock;
-  #endif
 };
 typedef struct stack stack_t;
 
