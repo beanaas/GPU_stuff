@@ -174,8 +174,11 @@ test_push_safe()
 
   // Do some work
   stack_push(1, stack);
+  printf("value1 %d \n", stack->head->val);
   stack_push(2, stack);
+  printf("value2 %d \n", stack->head->val);
   stack_push(5, stack);
+  printf("value3 %d \n", stack->head->val);
   // check if the stack is in a consistent state
   int res = assert(stack_check(stack));
 
@@ -207,8 +210,42 @@ test_pop_safe()
   return res;
 }
 
+
+
+
 // 3 Threads should be enough to raise and detect the ABA problem
 #define ABA_NB_THREADS 3
+pthread_mutex_t lock0, lock1, lock2;
+
+int thread0(){
+  printf("value %d \n", 1);
+  node_t *node_to_pop;
+  do{
+    node_to_pop = stack->head;
+    pthread_mutex_unlock(&lock1);
+    pthread_mutex_lock(&lock0);
+    printf("value %d \n", 5);
+  }while(node_to_pop != (node_t*)cas((size_t*)&stack->head, (size_t)node_to_pop, (size_t)node_to_pop->next));
+
+}
+
+int thread1(){
+  pthread_mutex_lock(&lock1);
+  printf("value %d \n", 2);
+  stack_pop(stack);
+  pthread_mutex_unlock(&lock2);
+  pthread_mutex_lock(&lock1);
+  printf("value %d \n", 4);
+  stack_push(3, stack);
+  pthread_mutex_unlock(&lock0);
+}
+
+int thread2(){
+  pthread_mutex_lock(&lock2);
+  printf("value %d \n", 3);
+  stack_pop(stack);
+  pthread_mutex_unlock(&lock1);
+}
 
 int
 test_aba()
@@ -216,6 +253,37 @@ test_aba()
 #if NON_BLOCKING == 1 || NON_BLOCKING == 2
   int success, aba_detected = 0;
   // Write here a test for the ABA problem
+  pthread_attr_t attr;
+  pthread_t threads[ABA_NB_THREADS];
+  
+  pthread_attr_init(&attr);
+  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE); 
+  pthread_mutex_init(&lock0, NULL);
+  pthread_mutex_init(&lock1, NULL);
+  pthread_mutex_init(&lock2, NULL);
+
+  pthread_mutex_lock(&lock0);
+  pthread_mutex_lock(&lock1);
+  pthread_mutex_lock(&lock2);
+
+  stack_push(1, stack);
+  stack_push(2, stack);
+  stack_push(3, stack);
+
+
+  pthread_create(&threads[0], NULL, &thread0, NULL);
+  pthread_create(&threads[1], NULL, &thread1, NULL);
+  pthread_create(&threads[2], NULL, &thread2, NULL);
+
+  for (int i = 0; i < NB_THREADS; i++)
+    {
+      pthread_join(threads[i], NULL);
+    }
+
+  printf("\n value1 %d \n", stack->head->val);
+
+
+
   success = aba_detected;
   return success;
 #else

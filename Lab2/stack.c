@@ -67,19 +67,27 @@ stack_check(stack_t *stack)
 int /* Return the type you prefer */
 stack_push(int val, stack_t *stack)
 {
+  node_t *node = &free_list[counter++];
+  node->val = val;
+  node_t *old_head;
 
 #if NON_BLOCKING == 0
-  node_t *node = &free_list[counter++];
+  
   
   node->val = val;
   // Implement a lock_based stack
   pthread_mutex_lock(&stack->lock);
-  node->next = stack->head;
+  old_head = stack->head;
+  node->next = old_head;
   stack->head = node;
   pthread_mutex_unlock(&stack->lock);
   
 #elif NON_BLOCKING == 1
   // Implement a harware CAS-based stack
+  do{
+    old_head = stack->head;
+    node->next = old_head;
+  }while((node_t*)cas((size_t*)&stack->head, (size_t)old_head, (size_t)node)!=old_head);
 #else
   /*** Optional ***/
   // Implement a software CAS-based stack
@@ -104,12 +112,10 @@ int stack_pop(stack_t *stack)
   // Implement a lock_based stack
 #elif NON_BLOCKING == 1
   // Implement a harware CAS-based stack
-
 	do {
-		node_t *old_head = stack->head;
-    //if pointer to stack header 
-		node_to_pop = (node_t*)cas((size_t*)&stack->head, (size_t)old_head, (size_t)old_head->next);
-	}	while(node_to_pop != old_head);
+		node_to_pop = stack->head;
+    
+	}	while(node_to_pop != (node_t*)cas((size_t*)&stack->head, (size_t)node_to_pop, (size_t)node_to_pop->next));
 #else
   /*** Optional ***/
   // Implement a software CAS-based stack
