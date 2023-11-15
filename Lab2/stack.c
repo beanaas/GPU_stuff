@@ -65,7 +65,6 @@ stack_check(stack_t *stack)
 int /* Return the type you prefer */
 stack_push(int val, stack_t *stack, node_t *node)
 {
-  printf("The memory address of variable node is: %p\n", node);
   node->val = val;
   node_t *old_head;
 

@@ -67,7 +67,7 @@ typedef int data_t;
 #define DATA_SIZE sizeof(data_t)
 #define DATA_VALUE 5
 
-static node_t pool[MAX_PUSH_POP];
+static node_t pool[MAX_PUSH_POP+1];
 
 #ifndef NDEBUG
 int
@@ -108,6 +108,7 @@ stack_measure_pop(void* arg)
     for (i = 0; i < MAX_PUSH_POP / NB_THREADS; i++)
       {
         // See how fast your implementation can pop MAX_PUSH_POP elements in parallel
+        stack_pop(stack);
       }
     clock_gettime(CLOCK_MONOTONIC, &t_stop[args->id]);
 
@@ -123,7 +124,7 @@ stack_measure_push(void* arg)
   clock_gettime(CLOCK_MONOTONIC, &t_start[args->id]);
   for (i = 0; i < MAX_PUSH_POP / NB_THREADS; i++)
     {
-        // See how fast your implementation can push MAX_PUSH_POP elements in parallel
+        stack_push(i, stack, &pool[i]);
     }
   clock_gettime(CLOCK_MONOTONIC, &t_stop[args->id]);
 
@@ -198,10 +199,7 @@ test_pop_safe()
   stack_push(5, stack, &pool[2]);
   node_t *popped_node = stack_pop(stack);
   stack_push(5, stack, popped_node);
-  printf("The memory address after push: %p\n", stack->head);
   stack_pop(stack);
-
-  printf(" value2 %d", stack->head->val);
 
   int res = assert(stack->head == NULL);
 
@@ -213,35 +211,33 @@ test_pop_safe()
 
 
 
-
+#if MEASURE == 0
 // 3 Threads should be enough to raise and detect the ABA problem
 #define ABA_NB_THREADS 3
 pthread_mutex_t lock0, lock1, lock2;
 
 int thread0(){
-  node_t *node_to_pop;
+  node_t *node_to_pop, *next;
   do{
     node_to_pop = stack->head;
+    next = stack->head->next;
     pthread_mutex_unlock(&lock1);
     pthread_mutex_lock(&lock0);
-  }while(node_to_pop != (node_t*)cas((size_t*)&stack->head, (size_t)node_to_pop, (size_t)node_to_pop->next));
-  printf("value %d \n", 6);
-
+  }while(node_to_pop != (node_t*)cas((size_t*)&stack->head, (size_t)node_to_pop, (size_t)next));
 }
 
 int thread1(){
+  node_t *old;
   pthread_mutex_lock(&lock1);
   node_t *A = stack_pop(stack);
   pthread_mutex_unlock(&lock2);
   pthread_mutex_lock(&lock1);
   stack_push(3, stack, A);
-  printf("testing thread1 aaa 3 %p \n", stack->head);
   pthread_mutex_unlock(&lock0);
 }
 
 int thread2(){
   pthread_mutex_lock(&lock2);
-  printf("value %d \n", 3);
   stack_pop(stack);
   pthread_mutex_unlock(&lock1);
 }
@@ -268,10 +264,10 @@ test_aba()
   node_t *A = &pool[2];
   node_t *B = &pool[1];
   node_t *C = &pool[0];
+
   stack_push(0, stack, C);
   stack_push(1, stack, B);
   stack_push(2, stack, A);
-  printf("fenjfnejnf AAA next%p \n", A->next);
 
   pthread_create(&threads[0], NULL, &thread0, NULL);
   pthread_create(&threads[1], NULL, &thread1, NULL);
@@ -281,21 +277,9 @@ test_aba()
     {
       pthread_join(threads[i], NULL);
     }
-
-  printf("fenjfnejnf AAA %p \n", A->next);
-  printf("fenjfnejnf AAA %p \n", A);
-  printf("fenjfnejnf BBBB%p \n", B);
-  printf("fenjfnejnf CCCC%p \n", C);
-
-  printf("testing thread1 aaa %p \n", stack->head);
-
-  if(stack->head == A) printf("CORRECT HEAD\n");
-
-  if(stack->head->next == B)printf("CORRECT B\n");
-
-  if(stack->head->next == C)printf("CORRECT C\n");
-
-  if(stack->head->next != B)printf("ABA true\n");
+  if(stack->head != C){
+    aba_detected = 1;
+  }
 
 
   success = aba_detected;
@@ -305,6 +289,7 @@ test_aba()
   return 1;
 #endif
 }
+#endif
 
 // We test here the CAS function
 struct thread_test_cas_args
@@ -399,7 +384,6 @@ setbuf(stdout, NULL);
   test_run(test_push_safe);
   test_run(test_pop_safe);
   test_run(test_aba);
-
   test_finalize();
 #else
   int i;
@@ -407,6 +391,13 @@ setbuf(stdout, NULL);
   pthread_attr_t attr;
   stack_measure_arg_t arg[NB_THREADS];
   pthread_attr_init(&attr);
+  stack = stack_init();
+  #if MEASURE == 1
+  
+  for (i = 0; i < MAX_PUSH_POP; i++){
+      stack_push(i, stack, &pool[i]);
+  }
+  #endif
 
   clock_gettime(CLOCK_MONOTONIC, &start);
   for (i = 0; i < NB_THREADS; i++)
