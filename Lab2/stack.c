@@ -62,6 +62,7 @@ stack_check(stack_t *stack)
 	return 1;
 }
 
+
 int /* Return the type you prefer */
 stack_push(int val, stack_t *stack, node_t *node)
 {

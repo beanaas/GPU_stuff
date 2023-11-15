@@ -67,7 +67,7 @@ typedef int data_t;
 #define DATA_SIZE sizeof(data_t)
 #define DATA_VALUE 5
 
-static node_t pool[MAX_PUSH_POP+1];
+static node_t pool[MAX_PUSH_POP];
 
 #ifndef NDEBUG
 int
@@ -395,6 +395,7 @@ setbuf(stdout, NULL);
   #if MEASURE == 1
   
   for (i = 0; i < MAX_PUSH_POP; i++){
+    
       stack_push(i, stack, &pool[i]);
   }
   #endif
@@ -419,7 +420,7 @@ setbuf(stdout, NULL);
   // Print out results
   for (i = 0; i < NB_THREADS; i++)
     {
-        printf("%d, %f\n", i, timediff(&t_start[i], &t_stop[i]));
+        printf("%f\n", timediff(&t_start[i], &t_stop[i]));
     }
 #endif
 
