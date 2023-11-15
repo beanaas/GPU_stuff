@@ -43,8 +43,8 @@ struct stack
 };
 typedef struct stack stack_t;
 
-int stack_push(int, stack_t *stack);
-int stack_pop(stack_t *stack);
+int stack_push(int val, stack_t *stack, node_t *node);
+node_t* stack_pop(stack_t *stack);
 stack_t* stack_init();
 
 /* Use this to check if your stack is in a consistent state from time to time */

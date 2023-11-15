@@ -45,8 +45,6 @@
 #endif
 #endif
 
-static node_t free_list[MAX_PUSH_POP];
-_Atomic static int counter;
 
 int
 stack_check(stack_t *stack)
@@ -65,9 +63,9 @@ stack_check(stack_t *stack)
 }
 
 int /* Return the type you prefer */
-stack_push(int val, stack_t *stack)
+stack_push(int val, stack_t *stack, node_t *node)
 {
-  node_t *node = &free_list[counter++];
+  printf("The memory address of variable node is: %p\n", node);
   node->val = val;
   node_t *old_head;
 
@@ -99,30 +97,29 @@ stack_push(int val, stack_t *stack)
   return 0;
 }
 
-int stack_pop(stack_t *stack)
+
+node_t* stack_pop(stack_t *stack)
 {
   node_t *node_to_pop;
 #if NON_BLOCKING == 0
   pthread_mutex_lock(&stack->lock);
   node_to_pop=stack->head;
   stack->head = node_to_pop->next;
-  free_list[counter--] = *node_to_pop;
   pthread_mutex_unlock(&stack->lock);
-
   // Implement a lock_based stack
 #elif NON_BLOCKING == 1
   // Implement a harware CAS-based stack
 	do {
 		node_to_pop = stack->head;
-    
 	}	while(node_to_pop != (node_t*)cas((size_t*)&stack->head, (size_t)node_to_pop, (size_t)node_to_pop->next));
+  
 #else
   /*** Optional ***/
   // Implement a software CAS-based stack
 #endif
   //res = temp.val; 
    stack_check((stack_t*)1);
-  return 0;
+  return node_to_pop;
 }
 
 stack_t* stack_init() 
@@ -130,7 +127,6 @@ stack_t* stack_init()
   stack_t *stack = malloc(sizeof(stack_t));
   stack->head = NULL;
   pthread_mutex_init(&(stack->lock), NULL);
-  counter = 0;
 
   return stack; 
 }

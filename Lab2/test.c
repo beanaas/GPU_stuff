@@ -32,6 +32,8 @@
 #include "stack.h"
 #include "non_blocking.h"
 
+
+
 #define test_run(test)\
   printf("[%s:%s:%i] Running test '%s'... ", __FILE__, __FUNCTION__, __LINE__, #test);\
   test_setup();\
@@ -64,6 +66,8 @@ double timediff(struct timespec *begin, struct timespec *end)
 typedef int data_t;
 #define DATA_SIZE sizeof(data_t)
 #define DATA_VALUE 5
+
+static node_t pool[MAX_PUSH_POP];
 
 #ifndef NDEBUG
 int
@@ -173,12 +177,9 @@ test_push_safe()
   // several threads push concurrently to it
 
   // Do some work
-  stack_push(1, stack);
-  printf("value1 %d \n", stack->head->val);
-  stack_push(2, stack);
-  printf("value2 %d \n", stack->head->val);
-  stack_push(5, stack);
-  printf("value3 %d \n", stack->head->val);
+  stack_push(1, stack, &pool[0]);
+  stack_push(2, stack, &pool[1]);
+  stack_push(5, stack, &pool[2]);
   // check if the stack is in a consistent state
   int res = assert(stack_check(stack));
 
@@ -191,15 +192,15 @@ test_push_safe()
 int
 test_pop_safe()
 {
-  stack_push(1, stack);
-  stack_push(2, stack);
+  stack_push(1, stack, &pool[0]);
+  stack_push(2, stack, &pool[1]);
   
-  stack_push(5, stack);
-  printf("value1 %d \n", stack->head->val);
+  stack_push(5, stack, &pool[2]);
+  node_t *popped_node = stack_pop(stack);
+  stack_push(5, stack, popped_node);
+  printf("The memory address after push: %p\n", stack->head);
+  stack_pop(stack);
 
-  stack_pop(stack);
-  printf("value1 %d", stack->head->val);
-  stack_pop(stack);
   printf(" value2 %d", stack->head->val);
 
   int res = assert(stack->head == NULL);
@@ -218,25 +219,23 @@ test_pop_safe()
 pthread_mutex_t lock0, lock1, lock2;
 
 int thread0(){
-  printf("value %d \n", 1);
   node_t *node_to_pop;
   do{
     node_to_pop = stack->head;
     pthread_mutex_unlock(&lock1);
     pthread_mutex_lock(&lock0);
-    printf("value %d \n", 5);
   }while(node_to_pop != (node_t*)cas((size_t*)&stack->head, (size_t)node_to_pop, (size_t)node_to_pop->next));
+  printf("value %d \n", 6);
 
 }
 
 int thread1(){
   pthread_mutex_lock(&lock1);
-  printf("value %d \n", 2);
-  stack_pop(stack);
+  node_t *A = stack_pop(stack);
   pthread_mutex_unlock(&lock2);
   pthread_mutex_lock(&lock1);
-  printf("value %d \n", 4);
-  stack_push(3, stack);
+  stack_push(3, stack, A);
+  printf("testing thread1 aaa 3 %p \n", stack->head);
   pthread_mutex_unlock(&lock0);
 }
 
@@ -266,10 +265,13 @@ test_aba()
   pthread_mutex_lock(&lock1);
   pthread_mutex_lock(&lock2);
 
-  stack_push(1, stack);
-  stack_push(2, stack);
-  stack_push(3, stack);
-
+  node_t *A = &pool[2];
+  node_t *B = &pool[1];
+  node_t *C = &pool[0];
+  stack_push(0, stack, C);
+  stack_push(1, stack, B);
+  stack_push(2, stack, A);
+  printf("fenjfnejnf AAA next%p \n", A->next);
 
   pthread_create(&threads[0], NULL, &thread0, NULL);
   pthread_create(&threads[1], NULL, &thread1, NULL);
@@ -280,8 +282,20 @@ test_aba()
       pthread_join(threads[i], NULL);
     }
 
-  printf("\n value1 %d \n", stack->head->val);
+  printf("fenjfnejnf AAA %p \n", A->next);
+  printf("fenjfnejnf AAA %p \n", A);
+  printf("fenjfnejnf BBBB%p \n", B);
+  printf("fenjfnejnf CCCC%p \n", C);
 
+  printf("testing thread1 aaa %p \n", stack->head);
+
+  if(stack->head == A) printf("CORRECT HEAD\n");
+
+  if(stack->head->next == B)printf("CORRECT B\n");
+
+  if(stack->head->next == C)printf("CORRECT C\n");
+
+  if(stack->head->next != B)printf("ABA true\n");
 
 
   success = aba_detected;
