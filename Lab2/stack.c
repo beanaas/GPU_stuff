@@ -62,6 +62,13 @@ stack_check(stack_t *stack)
 	return 1;
 }
 
+void do_work(){
+  int ctr = 0;
+  while(ctr<100){
+    ctr++;
+  }
+}
+
 
 int /* Return the type you prefer */
 stack_push(int val, stack_t *stack, node_t *node)
@@ -78,6 +85,7 @@ stack_push(int val, stack_t *stack, node_t *node)
   old_head = stack->head;
   node->next = old_head;
   stack->head = node;
+  do_work();
   pthread_mutex_unlock(&stack->lock);
   
 #elif NON_BLOCKING == 1
@@ -85,6 +93,7 @@ stack_push(int val, stack_t *stack, node_t *node)
   do{
     old_head = stack->head;
     node->next = old_head;
+    do_work();
   }while((node_t*)cas((size_t*)&stack->head, (size_t)old_head, (size_t)node)!=old_head);
 #else
   /*** Optional ***/
@@ -105,12 +114,14 @@ node_t* stack_pop(stack_t *stack)
   pthread_mutex_lock(&stack->lock);
   node_to_pop=stack->head;
   stack->head = node_to_pop->next;
+  do_work();
   pthread_mutex_unlock(&stack->lock);
   // Implement a lock_based stack
 #elif NON_BLOCKING == 1
   // Implement a harware CAS-based stack
 	do {
 		node_to_pop = stack->head;
+    do_work();
 	}	while(node_to_pop != (node_t*)cas((size_t*)&stack->head, (size_t)node_to_pop, (size_t)node_to_pop->next));
   
 #else

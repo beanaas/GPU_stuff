@@ -35,7 +35,6 @@ struct node
 typedef struct node node_t;
 
 
-
 struct stack
 {
   node_t *head;

@@ -86,6 +86,7 @@ assert_fun(int expr, const char *str, const char *file, const char* function, si
 stack_t *stack;
 data_t data;
 stack_t *pool;
+node_t *nodes[MAX_PUSH_POP];
 
 node_t* get_node(stack_t *pool){
   node_t *node;
@@ -137,9 +138,11 @@ stack_measure_push(void* arg)
   int i;
 
   clock_gettime(CLOCK_MONOTONIC, &t_start[args->id]);
+  node_t *test;
   for (i = 0; i < MAX_PUSH_POP / NB_THREADS; i++)
     {
-        stack_push(i, stack, get_node(pool));
+        test = malloc(sizeof(test));
+        stack_push(i, stack, test);
     }
   clock_gettime(CLOCK_MONOTONIC, &t_stop[args->id]);
 
@@ -417,6 +420,9 @@ test_cas()
 #endif
 }
 
+
+
+
 int
 main(int argc, char **argv)
 {
@@ -440,10 +446,12 @@ setbuf(stdout, NULL);
   stack = stack_init();
   pool = stack_init();
   #if MEASURE == 1
+  node_t *test;
   
   for (i = 0; i < MAX_PUSH_POP; i++){
     
-      stack_push(i, stack, get_node(pool));
+      test = malloc(sizeof(test));
+      stack_push(i, stack, test);
   }
   #endif
 
