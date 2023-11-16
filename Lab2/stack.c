@@ -122,6 +122,7 @@ node_t* stack_pop(stack_t *stack)
   return node_to_pop;
 }
 
+
 stack_t* stack_init() 
 {
   stack_t *stack = malloc(sizeof(stack_t));

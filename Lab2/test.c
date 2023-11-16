@@ -67,8 +67,6 @@ typedef int data_t;
 #define DATA_SIZE sizeof(data_t)
 #define DATA_VALUE 5
 
-static node_t pool[MAX_PUSH_POP];
-
 #ifndef NDEBUG
 int
 assert_fun(int expr, const char *str, const char *file, const char* function, size_t line)
@@ -87,6 +85,23 @@ assert_fun(int expr, const char *str, const char *file, const char* function, si
 
 stack_t *stack;
 data_t data;
+stack_t *pool;
+
+node_t* get_node(stack_t *pool){
+  node_t *node;
+  if(pool->head != NULL){
+    node = stack_pop(pool);
+  }
+  else{
+    node = malloc(sizeof(node_t));
+  }
+  return node;
+}
+
+void add_to_pool(stack_t *pool, node_t *node){
+  stack_push(-1, pool, node);
+}
+
 
 #if MEASURE != 0
 struct stack_measure_arg
@@ -124,7 +139,7 @@ stack_measure_push(void* arg)
   clock_gettime(CLOCK_MONOTONIC, &t_start[args->id]);
   for (i = 0; i < MAX_PUSH_POP / NB_THREADS; i++)
     {
-        stack_push(i, stack, &pool[i]);
+        stack_push(i, stack, get_node(pool));
     }
   clock_gettime(CLOCK_MONOTONIC, &t_stop[args->id]);
 
@@ -148,6 +163,7 @@ test_setup()
 
 
   stack = stack_init();
+  pool = stack_init();
   //node_t *node_a = malloc(sizeof(node_t));
   // node_a->val = 10;
   // node_a->next = NULL;
@@ -171,16 +187,28 @@ test_finalize()
   // Destroy properly your test batch
 }
 
+
+void add_to_pool_aba(stack_t *pool, node_t *node){
+  stack_push(-1, pool, node);
+  node_t *A;
+  while(node->next!=NULL){
+    A = node->next;
+    node->next = A->next;
+    A->next = node;
+    pool->head = A;
+
+  }
+}
+
 int
 test_push_safe()
 {
   // Make sure your stack remains in a good state with expected content when
   // several threads push concurrently to it
-
   // Do some work
-  stack_push(1, stack, &pool[0]);
-  stack_push(2, stack, &pool[1]);
-  stack_push(5, stack, &pool[2]);
+  stack_push(1, stack, get_node(pool));
+  stack_push(2, stack, get_node(pool));
+  stack_push(5, stack, get_node(pool));
   // check if the stack is in a consistent state
   int res = assert(stack_check(stack));
 
@@ -193,18 +221,20 @@ test_push_safe()
 int
 test_pop_safe()
 {
-  stack_push(1, stack, &pool[0]);
-  stack_push(2, stack, &pool[1]);
+  stack_push(1, stack, get_node(pool));
+  stack_push(2, stack, get_node(pool));
   
-  stack_push(5, stack, &pool[2]);
-  node_t *popped_node = stack_pop(stack);
-  stack_push(5, stack, popped_node);
-  stack_pop(stack);
-
+  stack_push(5, stack, get_node(pool));
+  add_to_pool(pool, stack_pop(stack));
+  add_to_pool(pool, stack_pop(stack));
+  
+  stack_push(5, stack, get_node(pool));
+  
+  add_to_pool(pool, stack_pop(stack));
+  add_to_pool(pool, stack_pop(stack));
   int res = assert(stack->head == NULL);
 
   // Same as the test above for parallel pop operation
-
   // For now, this test always fails
   return res;
 }
@@ -221,24 +251,32 @@ int thread0(){
   do{
     node_to_pop = stack->head;
     next = stack->head->next;
+    printf("1 \n");
     pthread_mutex_unlock(&lock1);
     pthread_mutex_lock(&lock0);
+    printf("5 \n");
+    printf("pointer %p: \n", node_to_pop);
+    printf("pointer %p: \n", stack->head);
   }while(node_to_pop != (node_t*)cas((size_t*)&stack->head, (size_t)node_to_pop, (size_t)next));
 }
 
 int thread1(){
-  node_t *old;
   pthread_mutex_lock(&lock1);
-  node_t *A = stack_pop(stack);
+  add_to_pool_aba(pool,stack_pop(stack));
+  printf("2 \n");
   pthread_mutex_unlock(&lock2);
   pthread_mutex_lock(&lock1);
-  stack_push(3, stack, A);
+  printf("4 \n");
+  printf("SHOULD BE A %p: \n", pool->head);
+  stack_push(3, stack, get_node(pool));
+  printf("SHOULD BE A %p: \n", pool->head);
   pthread_mutex_unlock(&lock0);
 }
 
 int thread2(){
   pthread_mutex_lock(&lock2);
-  stack_pop(stack);
+  printf("3 \n");
+  add_to_pool_aba(pool,stack_pop(stack));
   pthread_mutex_unlock(&lock1);
 }
 
@@ -261,9 +299,12 @@ test_aba()
   pthread_mutex_lock(&lock1);
   pthread_mutex_lock(&lock2);
 
-  node_t *A = &pool[2];
-  node_t *B = &pool[1];
-  node_t *C = &pool[0];
+  node_t *A = get_node(pool);
+  node_t *B = get_node(pool);
+  node_t *C = get_node(pool);
+  printf("pointer A %p: \n", A);
+  printf("pointer B %p: \n", B);
+  printf("pointer C %p: \n", C);
 
   stack_push(0, stack, C);
   stack_push(1, stack, B);
@@ -281,6 +322,11 @@ test_aba()
     aba_detected = 1;
   }
 
+  printf("pointer to A %p \n", A);
+  printf("pointer to B %p \n", B);
+  printf("pointer to C %p \n", C);
+
+  printf("pointer to HEAD \p \n", stack->head);
 
   success = aba_detected;
   return success;
@@ -392,11 +438,12 @@ setbuf(stdout, NULL);
   stack_measure_arg_t arg[NB_THREADS];
   pthread_attr_init(&attr);
   stack = stack_init();
+  pool = stack_init();
   #if MEASURE == 1
   
   for (i = 0; i < MAX_PUSH_POP; i++){
     
-      stack_push(i, stack, &pool[i]);
+      stack_push(i, stack, get_node(pool));
   }
   #endif
 
