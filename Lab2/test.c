@@ -86,11 +86,12 @@ assert_fun(int expr, const char *str, const char *file, const char* function, si
 stack_t *stack;
 data_t data;
 stack_t *pool;
-node_t *nodes[MAX_PUSH_POP];
+_Atomic int atomic_counter = 0;
 
 node_t* get_node(stack_t *pool){
   node_t *node;
-  if(pool->head != NULL){
+  if(--atomic_counter>0){
+    printf("reusing memory \n");
     node = stack_pop(pool);
   }
   else{
@@ -100,6 +101,7 @@ node_t* get_node(stack_t *pool){
 }
 
 void add_to_pool(stack_t *pool, node_t *node){
+  ++atomic_counter;
   stack_push(-1, pool, node);
 }
 
@@ -128,6 +130,7 @@ stack_measure_pop(void* arg)
       }
     clock_gettime(CLOCK_MONOTONIC, &t_stop[args->id]);
 
+
     return NULL;
   }
 #elif MEASURE == 2
@@ -141,10 +144,11 @@ stack_measure_push(void* arg)
   node_t *test;
   for (i = 0; i < MAX_PUSH_POP / NB_THREADS; i++)
     {
-        test = malloc(sizeof(test));
-        stack_push(i, stack, test);
+        //test = malloc(sizeof(test));
+        stack_push(i, stack, get_node(pool));
     }
   clock_gettime(CLOCK_MONOTONIC, &t_stop[args->id]);
+
 
   return NULL;
 }
@@ -199,7 +203,6 @@ void add_to_pool_aba(stack_t *pool, node_t *node){
     node->next = A->next;
     A->next = node;
     pool->head = A;
-
   }
 }
 
@@ -243,7 +246,6 @@ test_pop_safe()
 }
 
 
-
 #if MEASURE == 0
 // 3 Threads should be enough to raise and detect the ABA problem
 #define ABA_NB_THREADS 3
@@ -270,9 +272,7 @@ int thread1(){
   pthread_mutex_unlock(&lock2);
   pthread_mutex_lock(&lock1);
   printf("4 \n");
-  printf("SHOULD BE A %p: \n", pool->head);
   stack_push(3, stack, get_node(pool));
-  printf("SHOULD BE A %p: \n", pool->head);
   pthread_mutex_unlock(&lock0);
 }
 
@@ -325,19 +325,13 @@ test_aba()
     aba_detected = 1;
   }
 
-  printf("pointer to A %p \n", A);
-  printf("pointer to B %p \n", B);
-  printf("pointer to C %p \n", C);
-
-  printf("pointer to HEAD \p \n", stack->head);
-
   success = aba_detected;
   return success;
 #else
   // No ABA is possible with lock-based synchronization. Let the test succeed only
   return 1;
 #endif
-}
+}counter after push-3605 
 #endif
 
 // We test here the CAS function
@@ -420,9 +414,6 @@ test_cas()
 #endif
 }
 
-
-
-
 int
 main(int argc, char **argv)
 {
@@ -452,6 +443,15 @@ setbuf(stdout, NULL);
     
       test = malloc(sizeof(test));
       stack_push(i, stack, test);
+  }
+  for (i = 0; i < 100; i++){
+    
+      test = malloc(sizeof(test));
+      stack_push(i, pool, test);
+  }
+  for (i = 0; i < 100; i++){
+      atomic_counter++;
+      stack_pop(pool);
   }
   #endif
 
