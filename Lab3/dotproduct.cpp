@@ -20,7 +20,13 @@ float userfunction(...)
 // more user functions...
 
 */
+float add(float a, float b){
+	return a + b;
+}
 
+float mult(float a, float b){
+	return a * b;
+}
 
 int main(int argc, const char* argv[])
 {
@@ -37,11 +43,21 @@ int main(int argc, const char* argv[])
 	
 	
 	/* Skeleton instances */
+	auto dotprod = skepu::MapReduce <2 >( mult , add );
+	auto add2 = skepu::Reduce(add);
+	auto mult2 = skepu::Map<2>(mult);
 //	auto instance = skepu::Map(userfunction);
 // ...
 	
 	/* SkePU containers */
-	skepu::Vector<float> v1(size, 1.0f), v2(size, 2.0f);
+	skepu::Vector<float> v1(size, 1.0f), v2(size, 2.0f), v3(size, 2.0f);
+
+	v1.randomize(0, 10);
+	v2.randomize(0, 10);
+
+	std :: cout << "v1: " << v1 << "\n";
+	std :: cout << "v2: " << v2 << "\n";
+
 	
 	
 	/* Compute and measure time */
@@ -49,12 +65,13 @@ int main(int argc, const char* argv[])
 	
 	auto timeComb = skepu::benchmark::measureExecTime([&]
 	{
-		// your code here
+		resComb = dotprod(v1, v2);
 	});
 	
 	auto timeSep = skepu::benchmark::measureExecTime([&]
 	{
-		// your code here
+		v3 = mult2(v1, v2);
+		resSep = add2(v3);
 	});
 	
 	std::cout << "Time Combined: " << (timeComb.count() / 10E6) << " seconds.\n";
