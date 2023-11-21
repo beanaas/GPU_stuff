@@ -19,8 +19,27 @@
 
 unsigned char median_kernel(skepu::Region2D<unsigned char> image, size_t elemPerPx)
 {
+	int size = ((image.oi*2+1)*((image.oj/elemPerPx)*2+1));
+	char arr1d[size];
+	int idx = 0;
+	for(int y = -image.oi; y <= image.oi; ++y){
+		for (int x = -image.oj; x <= image.oj; x += elemPerPx){
+			arr1d[idx] = image(y, x);
+			idx++;
+		}
+	}
+	char tmp;
+    for (int i = 0; i < size - 1; i++) {
+        for (int j = 0; j < size - i - 1; j++) {
+            if (arr1d[j] > arr1d[j + 1]) {
+				tmp = arr1d[j];
+				arr1d[j] = arr1d[j+1];
+				arr1d[j+1] = tmp;
+            }
+        }
+    }
 	// your code here
-	return image(0,0);
+	return arr1d[(size-1)/2];
 }
 
 

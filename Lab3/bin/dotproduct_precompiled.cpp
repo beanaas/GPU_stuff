@@ -232,13 +232,13 @@ int main(int argc, const char* argv[])
 // ...
 	
 	/* SkePU containers */
-	skepu::Vector<float> v1(size, 1.0f), v2(size, 2.0f), v3(size, 2.0f);
+	skepu::Vector<float> v1(size, 1.0f), v2(size, 2.0f), v3(size, 0.0f);
 
 	v1.randomize(0, 10);
 	v2.randomize(0, 10);
 
-	std :: cout << "v1: " << v1 << "\n";
-	std :: cout << "v2: " << v2 << "\n";
+	//std :: cout << "v1: " << v1 << "\n";
+	//std :: cout << "v2: " << v2 << "\n";
 
 	
 	
@@ -252,7 +252,7 @@ int main(int argc, const char* argv[])
 	
 	auto timeSep = skepu::benchmark::measureExecTime([&]
 	{
-		v3 = mult2(v1, v2);
+		mult2(v3, v1, v2);
 		resSep = add2(v3);
 	});
 	
