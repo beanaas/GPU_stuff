@@ -22,7 +22,7 @@
 unsigned char median_kernel(skepu::Region2D<unsigned char> image, size_t elemPerPx)
 {
 	int size = ((image.oi*2+1)*((image.oj/elemPerPx)*2+1));
-	char arr1d[size];
+	unsigned char arr1d[size];
 	int idx = 0;
 	for(int y = -image.oi; y <= image.oi; ++y){
 		for (int x = -image.oj; x <= image.oj; x += elemPerPx){
@@ -30,7 +30,7 @@ unsigned char median_kernel(skepu::Region2D<unsigned char> image, size_t elemPer
 			idx++;
 		}
 	}
-	char tmp;
+	unsigned char tmp;
     for (int i = 0; i < size - 1; i++) {
         for (int j = 0; j < size - i - 1; j++) {
             if (arr1d[j] > arr1d[j + 1]) {
@@ -40,8 +40,9 @@ unsigned char median_kernel(skepu::Region2D<unsigned char> image, size_t elemPer
             }
         }
     }
-	// your code here
-	return arr1d[(size-1)/2];
+
+	if(size % 2 == 1) return arr1d[size/2];
+	return (arr1d[(size-1)/2 ] + arr1d[(size+1)/2]) / 2;
 }
 
 
@@ -74,7 +75,7 @@ constexpr static bool prefersMatrix = 0;
 static inline SKEPU_ATTRIBUTE_FORCE_INLINE unsigned char OMP(skepu::Region2D<unsigned char> image, unsigned long elemPerPx)
 {
 	int size = ((image.oi*2+1)*((image.oj/elemPerPx)*2+1));
-	char arr1d[size];
+	unsigned char arr1d[size];
 	int idx = 0;
 	for(int y = -image.oi; y <= image.oi; ++y){
 		for (int x = -image.oj; x <= image.oj; x += elemPerPx){
@@ -82,7 +83,7 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE unsigned char OMP(skepu::Region2D<uns
 			idx++;
 		}
 	}
-	char tmp;
+	unsigned char tmp;
     for (int i = 0; i < size - 1; i++) {
         for (int j = 0; j < size - i - 1; j++) {
             if (arr1d[j] > arr1d[j + 1]) {
@@ -92,8 +93,9 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE unsigned char OMP(skepu::Region2D<uns
             }
         }
     }
-	// your code here
-	return arr1d[(size-1)/2];
+
+	if(size % 2 == 1) return arr1d[size/2];
+	return (arr1d[(size-1)/2 ] + arr1d[(size+1)/2]) / 2;
 }
 #undef SKEPU_USING_BACKEND_OMP
 
@@ -107,7 +109,7 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE unsigned char OMP(skepu::Region2D<uns
 static inline SKEPU_ATTRIBUTE_FORCE_INLINE unsigned char CPU(skepu::Region2D<unsigned char> image, unsigned long elemPerPx)
 {
 	int size = ((image.oi*2+1)*((image.oj/elemPerPx)*2+1));
-	char arr1d[size];
+	unsigned char arr1d[size];
 	int idx = 0;
 	for(int y = -image.oi; y <= image.oi; ++y){
 		for (int x = -image.oj; x <= image.oj; x += elemPerPx){
@@ -115,7 +117,7 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE unsigned char CPU(skepu::Region2D<uns
 			idx++;
 		}
 	}
-	char tmp;
+	unsigned char tmp;
     for (int i = 0; i < size - 1; i++) {
         for (int j = 0; j < size - i - 1; j++) {
             if (arr1d[j] > arr1d[j + 1]) {
@@ -125,8 +127,9 @@ static inline SKEPU_ATTRIBUTE_FORCE_INLINE unsigned char CPU(skepu::Region2D<uns
             }
         }
     }
-	// your code here
-	return arr1d[(size-1)/2];
+
+	if(size % 2 == 1) return arr1d[size/2];
+	return (arr1d[(size-1)/2 ] + arr1d[(size+1)/2]) / 2;
 }
 #undef SKEPU_USING_BACKEND_CPU
 };
