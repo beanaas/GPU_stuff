@@ -1,0 +1,160 @@
+Time Combined: 2.82e-05 seconds.
+Time Separate: 1.79e-05 seconds.
+Result Combined: 2.02883e+06
+Result Separate: 2.02883e+06
+Time Combined: 7.53e-05 seconds.
+Time Separate: 3.98e-05 seconds.
+Result Combined: 4.05301e+06
+Result Separate: 4.05301e+06
+Time Combined: 9.76e-05 seconds.
+Time Separate: 6.34e-05 seconds.
+Result Combined: 8.09977e+06
+Result Separate: 8.09977e+06
+Time Combined: 0.0001694 seconds.
+Time Separate: 0.0001181 seconds.
+Result Combined: 1.62002e+07
+Result Separate: 1.62002e+07
+Time Combined: 0.0003403 seconds.
+Time Separate: 0.00029 seconds.
+Result Combined: 3.24137e+07
+Result Separate: 3.24137e+07
+Time Combined: 0.0006767 seconds.
+Time Separate: 0.0005859 seconds.
+Result Combined: 6.47943e+07
+Result Separate: 6.47943e+07
+Time Combined: 0.001341 seconds.
+Time Separate: 0.0011331 seconds.
+Result Combined: 1.29493e+08
+Result Separate: 1.29493e+08
+Time Combined: 0.0026805 seconds.
+Time Separate: 0.0023092 seconds.
+Result Combined: 2.5733e+08
+Result Separate: 2.5733e+08
+Time Combined: 0.005411 seconds.
+Time Separate: 0.0046935 seconds.
+Result Combined: 5.01372e+08
+Result Separate: 5.01372e+08
+Time Combined: 0.0108031 seconds.
+Time Separate: 0.0093348 seconds.
+Result Combined: 9.16356e+08
+Result Separate: 9.16356e+08
+Time Combined: 1.45e-05 seconds.
+Time Separate: 5e-06 seconds.
+Result Combined: 2.02174e+06
+Result Separate: 2.02174e+06
+Time Combined: 3.49e-05 seconds.
+Time Separate: 9.8e-06 seconds.
+Result Combined: 4.05827e+06
+Result Separate: 4.05827e+06
+Time Combined: 7.46e-05 seconds.
+Time Separate: 1.91e-05 seconds.
+Result Combined: 8.10724e+06
+Result Separate: 8.10724e+06
+Time Combined: 0.0001565 seconds.
+Time Separate: 3.83e-05 seconds.
+Result Combined: 1.61858e+07
+Result Separate: 1.61858e+07
+Time Combined: 0.0002001 seconds.
+Time Separate: 6.7e-05 seconds.
+Result Combined: 3.23853e+07
+Result Separate: 3.23853e+07
+Time Combined: 0.0004928 seconds.
+Time Separate: 0.0002216 seconds.
+Result Combined: 6.47765e+07
+Result Separate: 6.47765e+07
+Time Combined: 0.0014577 seconds.
+Time Separate: 0.0004648 seconds.
+Result Combined: 1.29694e+08
+Result Separate: 1.29694e+08
+Time Combined: 0.0009741 seconds.
+Time Separate: 0.0010258 seconds.
+Result Combined: 2.59199e+08
+Result Separate: 2.59199e+08
+Time Combined: 0.0017408 seconds.
+Time Separate: 0.0018406 seconds.
+Result Combined: 5.18419e+08
+Result Separate: 5.18419e+08
+Time Combined: 0.0016062 seconds.
+Time Separate: 0.0033691 seconds.
+Result Combined: 1.03641e+09
+Result Separate: 1.03641e+09
+Time Combined: 5.2e-06 seconds.
+Time Separate: 5.4e-06 seconds.
+Result Combined: 2.02616e+06
+Result Separate: 2.02616e+06
+Time Combined: 5e-06 seconds.
+Time Separate: 5.3e-06 seconds.
+Result Combined: 4.04996e+06
+Result Separate: 4.04996e+06
+Time Combined: 5e-06 seconds.
+Time Separate: 5.6e-06 seconds.
+Result Combined: 8.10709e+06
+Result Separate: 8.10709e+06
+Time Combined: 1.67e-05 seconds.
+Time Separate: 1.46e-05 seconds.
+Result Combined: 1.61811e+07
+Result Separate: 1.61811e+07
+Time Combined: 2.14e-05 seconds.
+Time Separate: 1.94e-05 seconds.
+Result Combined: 3.23925e+07
+Result Separate: 3.23925e+07
+Time Combined: 3.26e-05 seconds.
+Time Separate: 3.19e-05 seconds.
+Result Combined: 6.47646e+07
+Result Separate: 6.47646e+07
+Time Combined: 5.22e-05 seconds.
+Time Separate: 5.79e-05 seconds.
+Result Combined: 1.2964e+08
+Result Separate: 1.2964e+08
+Time Combined: 9.22e-05 seconds.
+Time Separate: 0.0001104 seconds.
+Result Combined: 2.59234e+08
+Result Separate: 2.59234e+08
+Time Combined: 0.000127 seconds.
+Time Separate: 0.0002163 seconds.
+Result Combined: 5.18414e+08
+Result Separate: 5.18414e+08
+Time Combined: 0.0002029 seconds.
+Time Separate: 0.0003803 seconds.
+Result Combined: 1.0367e+09
+Result Separate: 1.0367e+09
+Time Combined: 2.2e-06 seconds.
+Time Separate: 2.3e-06 seconds.
+Result Combined: 2.03255e+06
+Result Separate: 2.03255e+06
+Time Combined: 2.9e-06 seconds.
+Time Separate: 3e-06 seconds.
+Result Combined: 4.05607e+06
+Result Separate: 4.05607e+06
+Time Combined: 4.2e-06 seconds.
+Time Separate: 4.4e-06 seconds.
+Result Combined: 8.09945e+06
+Result Separate: 8.09945e+06
+Time Combined: 3.64e-05 seconds.
+Time Separate: 1.28e-05 seconds.
+Result Combined: 1.62154e+07
+Result Separate: 1.62154e+07
+Time Combined: 1.75e-05 seconds.
+Time Separate: 1.66e-05 seconds.
+Result Combined: 3.23669e+07
+Result Separate: 3.23669e+07
+Time Combined: 2.3e-05 seconds.
+Time Separate: 2.77e-05 seconds.
+Result Combined: 6.48384e+07
+Result Separate: 6.48384e+07
+Time Combined: 3.52e-05 seconds.
+Time Separate: 5.02e-05 seconds.
+Result Combined: 1.29601e+08
+Result Separate: 1.29601e+08
+Time Combined: 5.77e-05 seconds.
+Time Separate: 9.39e-05 seconds.
+Result Combined: 2.59226e+08
+Result Separate: 2.59226e+08
+Time Combined: 0.0001051 seconds.
+Time Separate: 0.0001811 seconds.
+Result Combined: 5.18422e+08
+Result Separate: 5.18422e+08
+Time Combined: 0.0001785 seconds.
+Time Separate: 0.0003842 seconds.
+Result Combined: 1.03678e+09
+Result Separate: 1.03678e+09

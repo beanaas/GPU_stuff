@@ -63,12 +63,12 @@ int main(int argc, const char* argv[])
 	/* Compute and measure time */
 	float resComb, resSep;
 	
-	auto timeComb = skepu::benchmark::measureExecTime([&]
+	auto timeComb = skepu::benchmark::measureExecTimeIdempotent([&]
 	{
 		resComb = dotprod(v1, v2);
 	});
 	
-	auto timeSep = skepu::benchmark::measureExecTime([&]
+	auto timeSep = skepu::benchmark::measureExecTimeIdempotent([&]
 	{
 		mult2(v3, v1, v2);
 		resSep = add2(v3);
