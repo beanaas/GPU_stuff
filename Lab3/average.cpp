@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
 			conv(outputMatrix, inputMatrixPad, imageInfo.elementsPerPixel);
 		});
 	
-		WritePngFileMatrix(outputMatrix, outputFile + "-average.png", colorType, imageInfo);
+		//WritePngFileMatrix(outputMatrix, outputFile + "-average.png", colorType, imageInfo);
 		std::cout << "Time for combined: " << (timeTaken.count() / 10E6) << "\n";
 	}
 	
@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
 			conv(outputMatrix, outputMatrix, 1);
 		});
 		
-		WritePngFileMatrix(outputMatrix, outputFile + "-separable.png", colorType, imageInfo);
+		//WritePngFileMatrix(outputMatrix, outputFile + "-separable.png", colorType, imageInfo);
 		std::cout << "Time for separable: " << (timeTaken.count() / 10E6) << "\n";
 	}
 	
@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
 			// your code here
 		});
 	
-		WritePngFileMatrix(outputMatrix, outputFile + "-gaussian.png", colorType, imageInfo);
+		//WritePngFileMatrix(outputMatrix, outputFile + "-gaussian.png", colorType, imageInfo);
 		std::cout << "Time for gaussian: " << (timeTaken.count() / 10E6) << "\n";
 	}
 	
