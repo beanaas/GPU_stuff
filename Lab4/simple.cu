@@ -12,7 +12,7 @@ const int blocksize = 16;
 __global__ 
 void simple(float *c) 
 {
-	c[threadIdx.x] = threadIdx.x;
+	c[threadIdx.x] = sqrt((float)threadIdx.x);
 }
 
 int main()
@@ -30,7 +30,10 @@ int main()
 	cudaFree( cd );
 	
 	for (int i = 0; i < N; i++)
-		printf("%f ", c[i]);
+	{
+		printf("CUDA: %.17f ", c[i]);
+		printf("CPU: %.17f\n", sqrt((double)i)); 	
+	}
 	printf("\n");
 	delete[] c;
 	printf("done\n");
