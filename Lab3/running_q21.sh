@@ -1,18 +1,18 @@
 #!/bin/bash
 
 rm "output_q21.txt"
-make clean; make bin/dotproduct
+make clean; make bin/average
 for((i=problem_size;i<=100000000;i*=2));do
-    bin/dotproduct $i CPU  >> output.txt
+    bin/average $i CPU  >> output_q21.txt
 done
 for((i=problem_size;i<=100000000;i*=2));do
     #echo "thread$i">>output.txt
-    bin/dotproduct $i OPENMP  >> output.txt
+    bin/average $i OPENMP  >> output_q21.txt
 done
 for((i=problem_size;i<=100000000;i*=2));do
-    bin/dotproduct $i OPENCL  >> output.txt
+    bin/average $i OPENCL  >> output_q21.txt
 done
 
 for((i=problem_size;i<=100000000;i*=2));do
-    bin/dotproduct $i CUDA  >> output.txt
+    bin/average $i CUDA  >> output_q21.txt
 done
