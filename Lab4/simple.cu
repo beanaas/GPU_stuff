@@ -17,6 +17,21 @@ void simple(float *c)
 
 int main()
 {
+
+	int nDevices;
+
+	cudaGetDeviceCount(&nDevices);
+	for (int i = 0; i < nDevices; i++) {
+	  cudaDeviceProp prop;
+	  cudaGetDeviceProperties(&prop, i);
+	  printf("Device Number: %d\n", i);
+	  printf("  Device name: %s\n", prop.name);
+	  printf("  Cores per SM: %d\n",
+			 prop.multiProcessorCount);
+	  printf("  Nr of SM: %d\n",
+			 prop.multiProcessorCount);
+	}
+
 	float *c = new float[N];	
 	float *cd;
 	const int size = N*sizeof(float);
