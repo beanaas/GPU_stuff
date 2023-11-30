@@ -20,7 +20,7 @@
 unsigned char median_kernel(skepu::Region2D<unsigned char> image, size_t elemPerPx)
 {
 	int size = ((image.oi*2+1)*((image.oj/elemPerPx)*2+1));
-	unsigned char arr1d[2000];
+	unsigned char arr1d[20000];
 	int idx = 0;
 	for(int y = -image.oi; y <= image.oi; ++y){
 		for (int x = -image.oj; x <= image.oj; x += elemPerPx){
@@ -39,8 +39,8 @@ unsigned char median_kernel(skepu::Region2D<unsigned char> image, size_t elemPer
         }
     }
 
-	if(size % 2 == 1) return arr1d[size/2];
-	return (arr1d[(size-1)/2 ] + arr1d[(size+1)/2]) / 2;
+	return arr1d[size/2];
+	
 }
 
 
@@ -69,19 +69,23 @@ int main(int argc, char* argv[])
 	ImageInfo imageInfo;
 	skepu::Matrix<unsigned char> inputMatrix = ReadAndPadPngFileToMatrix(inputFileName, radius, colorType, imageInfo);
 	skepu::Matrix<unsigned char> outputMatrix(imageInfo.height, imageInfo.width * imageInfo.elementsPerPixel, 120);
-	
+	std::cout << "Test1 \n";
 	// Skeleton instance
 	auto calculateMedian = skepu::MapOverlap(median_kernel);
 	calculateMedian.setOverlap(radius, radius  * imageInfo.elementsPerPixel);
-	
+	std::cout << "Test2 \n";
+	{
 	auto timeTaken = skepu::benchmark::measureExecTime([&]
 	{
 		calculateMedian(outputMatrix, inputMatrix, imageInfo.elementsPerPixel);
 	});
 
+	std::cout << "Test3 \n";
+	std::cout << "Time: " << (timeTaken.count() / 10E6) << "\n";
 	WritePngFileMatrix(outputMatrix, outputFileNamePad, colorType, imageInfo);
 	
-	std::cout << "Time: " << (timeTaken.count() / 10E6) << "\n";
+	
+	}
 	
 	return 0;
 }

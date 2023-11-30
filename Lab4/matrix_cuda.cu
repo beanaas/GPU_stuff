@@ -10,14 +10,16 @@ const int N = 1024;
 const int block_size = 32; 
 
 __global__ 
-void add_matrix(float *ad, float *bd, float *cd) 
+void add_matrix(float *a, float *b, float *c) 
 {
-	int blockId = blockIdx.x + blockIdx.y * gridDim.x;
-    int i,j,idx;
-    i = blockIdx.x + blockIdx.y * gridDim.x;
-	int idx = blockId * (blockDim.x * blockDim.y)+ (threadIdx.y * blockDim.x) + threadIdx.x;
-
-	cd[idx] = ad[idx] + bd[idx];
+	int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
+    int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    int elemIdx;
+    if(rowIdx < N && colIdx < N)
+    {
+        elemIdx = colIdx + rowIdx * N; 
+        c[elemIdx] = a[elemIdx] + b[elemIdx]; 
+    }
 }
 
 
@@ -76,14 +78,14 @@ int main()
 
     
 	
-	for (int i = 0; i < N; i++)
+	/*for (int i = 0; i < N; i++)
 	{
 		for (int j = 0; j < N; j++)
 		{
 			printf("%0.2f ", c[i + j * N]);
 		}
 		printf("\n");
-	}
+	}*/
 	delete[] c;
     delete[] b;
     delete[] a;

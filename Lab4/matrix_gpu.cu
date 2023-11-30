@@ -15,7 +15,8 @@ __global__ void AddMatrix(float *a, float *b, float *c, int N)
 
 int main(int argc, char *argv[])
 {
-    const int N = 16;
+    const int N = 1024; 
+    const int blocksize = 16; 
     const size_t size = (N * N) * sizeof(float);  
 
     //Initialize host matrices. 
@@ -29,7 +30,7 @@ int main(int argc, char *argv[])
 	a_h[i+j*N] = 10 + i;
 	b_h[i+j*N] = (float)j / N;
       }
-    float *a_d;
+    float *a_d;return EXIT_SUCCESS;
     float *b_d;
     float *c_d; //Initialize device matrices.
     //Allocate arrays on the device.
@@ -40,11 +41,24 @@ int main(int argc, char *argv[])
     cudaMemcpy(a_d, a_h, size, cudaMemcpyHostToDevice); 
     cudaMemcpy(b_d, b_h, size, cudaMemcpyHostToDevice); 
 
-    int threadsPerBlock = 1;
-    dim3 threadsPerGrid(N/threadsPerBlock, N/threadsPerBlock); 
+    dim3 dimBlock( blocksize, blocksize );
+	dim3 dimGrid( 1, 1 );
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    AddMatrix <<< dimGrid, dimBlock>>>(a_d, b_d, c_d, N); 
+    cudaEventRecord(stop);
+    cudaDeviceSynchronize();
+    cudaEventSynchronize(stop);
+    float milliseconds;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    cudaError_t err = cudaGetLastError();
 
-    AddMatrix <<< threadsPerGrid, threadsPerBlock>>>(a_d, b_d, c_d, N); 
+    if (err != cudaSuccess)
+        printf("Error: %s\n", cudaGetErrorString(err));
     cudaMemcpy(c_h, c_d, size, cudaMemcpyDeviceToHost);
+    
 
     for (int i = 0; i < N; i++)
 	{
@@ -58,5 +72,9 @@ int main(int argc, char *argv[])
     cudaFree(a_d);
     cudaFree(b_d); 
     cudaFree(c_d); 
+    printf("timing %f \n", milliseconds);
+	printf("done\n");
+
+    return EXIT_SUCCESS;
 
 }
