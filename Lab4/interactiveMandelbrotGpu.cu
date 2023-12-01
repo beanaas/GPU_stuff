@@ -26,52 +26,57 @@
 
 // Image data
 	unsigned char	*pixels = NULL;
-	int	 gImageWidth, gImageHeight;
+	__managed__ int	 gImageWidth, gImageHeight, size;
+	unsigned char 	*pixels_for_gpu = NULL;
 
 // Init image data
 void initBitmap(int width, int height)
 {
-	if (pixels) free(pixels);
-	pixels = (unsigned char *)malloc(width * height * 4);
 	gImageWidth = width;
 	gImageHeight = height;
+	size = width * height*4;
+	if (pixels) free(pixels);
+	pixels = (unsigned char *)malloc(size);
+	if (pixels_for_gpu) cudaFree(pixels_for_gpu);
+	 cudaMalloc((void**)&pixels_for_gpu, size);
 }
 
 #define DIM 512
 
 // Select precision here! float or double!
-#define MYFLOAT float
+#define MYFLOAT double
 
 // User controlled parameters
-int maxiter = 20;
-MYFLOAT offsetx = -200, offsety = 0, zoom = 0;
-MYFLOAT scale = 1.5;
+__managed__ int maxiter = 200;
+__managed__ MYFLOAT offsetx = -200, offsety = 0, zoom = 0;
+__managed__ MYFLOAT scale = 1.5;
+
 
 // Complex number class
-struct cuComplex
+__device__ struct cuComplex
 {
     MYFLOAT   r;
     MYFLOAT   i;
     
-    cuComplex( MYFLOAT a, MYFLOAT b ) : r(a), i(b)  {}
+    __device__ cuComplex( MYFLOAT a, MYFLOAT b ) : r(a), i(b)  {}
     
-    float magnitude2( void )
+    __device__ float magnitude2( void )
     {
         return r * r + i * i;
     }
     
-    cuComplex operator*(const cuComplex& a)
+    __device__ cuComplex operator*(const cuComplex& a)
     {
         return cuComplex(r*a.r - i*a.i, i*a.r + r*a.i);
     }
     
-    cuComplex operator+(const cuComplex& a)
+    __device__ cuComplex operator+(const cuComplex& a)
     {
         return cuComplex(r+a.r, i+a.i);
     }
 };
 
-int mandelbrot( int x, int y)
+__device__ int mandelbrot( int x, int y)
 {
     MYFLOAT jx = scale * (MYFLOAT)(gImageWidth/2 - x + offsetx/scale)/(gImageWidth/2);
     MYFLOAT jy = scale * (MYFLOAT)(gImageHeight/2 - y + offsety/scale)/(gImageWidth/2);
@@ -89,32 +94,26 @@ int mandelbrot( int x, int y)
 
     return i;
 }
-
+__global__
 void computeFractal( unsigned char *ptr)
 {
-    // map from x, y to pixel position
-    for (int x = 0; x < gImageWidth; x++)
-	    for (int y = 0; y < gImageHeight; y++)
-	    {
-		    int offset = x + y * gImageWidth;
-
-		    // now calculate the value at that position
-		    int fractalValue = mandelbrot( x, y);
+	int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
+	int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
+	int offset = colIdx + rowIdx * gImageWidth;
+	int fractalValue = mandelbrot( colIdx, rowIdx);
 		    
-		    // Colorize it
-		    int red = 255 * fractalValue/maxiter;
-		    if (red > 255) red = 255 - red;
-		    int green = 255 * fractalValue*4/maxiter;
-		    if (green > 255) green = 255 - green;
-		    int blue = 255 * fractalValue*20/maxiter;
-		    if (blue > 255) blue = 255 - blue;
-		    
-		    ptr[offset*4 + 0] = red;
-		    ptr[offset*4 + 1] = green;
-		    ptr[offset*4 + 2] = blue;
-		    
-		    ptr[offset*4 + 3] = 255;
-    	}
+	int red = 255 * fractalValue/maxiter;
+	if (red > 255) red = 255 - red;
+	int green = 255 * fractalValue*4/maxiter;
+	if (green > 255) green = 255 - green;
+	int blue = 255 * fractalValue*20/maxiter;
+	if (blue > 255) blue = 255 - blue;
+	
+	ptr[offset*4 + 0] = red;
+	ptr[offset*4 + 1] = green;
+	ptr[offset*4 + 2] = blue;
+	
+	ptr[offset*4 + 3] = 255;
 }
 
 char print_help = 0;
@@ -167,8 +166,30 @@ void PrintHelp()
 // Compute fractal and display image
 void Draw()
 {
-	computeFractal(pixels);
-	
+	cudaMemcpy( pixels_for_gpu, pixels, size, cudaMemcpyHostToDevice ); 
+	dim3 dimBlock( 16, 16 );
+    dim3 dimGrid(gImageWidth/dimBlock.x, gImageHeight/dimBlock.y);
+
+	cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+	computeFractal<<<dimGrid, dimBlock>>>(pixels_for_gpu);
+	cudaEventRecord(stop);
+    cudaDeviceSynchronize();
+    cudaEventSynchronize(stop);
+    float milliseconds_gpu;
+    cudaEventElapsedTime(&milliseconds_gpu, start, stop);
+    printf("timing GPU: %f \n", milliseconds_gpu/1000);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess)
+        printf("Error: %s\n", cudaGetErrorString(err));
+	cudaMemcpy( pixels, pixels_for_gpu, size, cudaMemcpyDeviceToHost ); 
+	cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
 // Dump the whole picture onto the screen. (Old-style OpenGL but without lots of geometry that doesn't matter so much.)
 	glClearColor( 0.0, 0.0, 0.0, 1.0 );
 	glClear( GL_COLOR_BUFFER_BIT );

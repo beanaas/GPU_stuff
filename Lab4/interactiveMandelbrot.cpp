@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "milli.h"
 
 // Image data
 	unsigned char	*pixels = NULL;
@@ -167,7 +168,11 @@ void PrintHelp()
 // Compute fractal and display image
 void Draw()
 {
+	ResetMilli();
 	computeFractal(pixels);
+	float milliseconds_cpu = GetSeconds();
+    printf("timing CPU: %f \n", milliseconds_cpu);
+	
 	
 // Dump the whole picture onto the screen. (Old-style OpenGL but without lots of geometry that doesn't matter so much.)
 	glClearColor( 0.0, 0.0, 0.0, 1.0 );
