@@ -10,3 +10,5 @@ We can use the indexes and the dimensions of the blocks in the y and x directtio
     int elemIdx
 
 ``
+*QUESTION: What happens if you use too many threads per block?*
+The result is just 0s, unspecified behavior?

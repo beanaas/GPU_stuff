@@ -17,7 +17,7 @@ void add_matrix(float *a, float *b, float *c, int N)
 
 int main()
 {
-	const int N = 64;
+	const int N = 512;
 
 	float a[N * N];
 	float b[N * N];
@@ -33,13 +33,13 @@ int main()
 	add_matrix(a, b, c, N);
 	float milliseconds = GetSeconds();
 	
-	for (int i = 0; i < N; i++)
+	/*for (int i = 0; i < N; i++)
 	{
 		for (int j = 0; j < N; j++)
 		{
 			printf("%0.2f ", c[i + j * N]);
 		}
 		printf("\n");
-	}
+	}*/
 	printf("timing %f \n", milliseconds);
 }

@@ -43,7 +43,6 @@ unsigned char median_kernel(skepu::Region2D<unsigned char> image, size_t elemPer
 	
 }
 
-
 int main(int argc, char* argv[])
 {
 	LodePNGColorType colorType = LCT_RGB;
@@ -58,7 +57,7 @@ int main(int argc, char* argv[])
 	std::string outputFileName = argv[2];
 	const int radius = atoi(argv[3]);
 	auto spec = skepu::BackendSpec{argv[4]};
-	skepu::setGlobalBackendSpec(spec);
+	skepu::setGlobalBackendSpec(spec);0.0005391
 	
 	// Create the full path for writing the image.
 	std::stringstream ss;
@@ -81,8 +80,9 @@ int main(int argc, char* argv[])
 	});
 
 	std::cout << "Test3 \n";
-	std::cout << "Time: " << (timeTaken.count() / 10E6) << "\n";
+	
 	WritePngFileMatrix(outputMatrix, outputFileNamePad, colorType, imageInfo);
+	std::cout << "Time: " << (timeTaken.count() / 10E6) << "\n";
 	
 	
 	}

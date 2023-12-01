@@ -5,12 +5,24 @@
 // nvcc simple.cu -L /usr/local/cuda/lib -lcudart -o simple
 
 #include <stdio.h>
+#include "milli.h"
+const int N = 512;
+const int block_size = 8; 
 
-const int N = 1024;
-const int block_size = 32; 
+void add_matrix_cpu(float *a, float *b, float *c, int N)
+{
+	int index;
+
+	for (int i = 0; i < N; i++)
+		for (int j = 0; j < N; j++)
+		{
+			index = i + j * N;
+			c[index] = a[index] + b[index];
+		}
+}
 
 __global__ 
-void add_matrix(float *a, float *b, float *c) 
+void add_matrix_gpu(float *a, float *b, float *c) 
 {
 	int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
     int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -21,6 +33,20 @@ void add_matrix(float *a, float *b, float *c)
         c[elemIdx] = a[elemIdx] + b[elemIdx]; 
     }
 }
+
+__global__ 
+void add_matrix_gpu_bad(float *a, float *b, float *c) 
+{
+	int rowIdx = blockIdx.y * blockDim.y + threadIdx.y;
+    int colIdx = blockIdx.x * blockDim.x + threadIdx.x;
+    int elemIdx;
+    if(rowIdx < N && colIdx < N)
+    {
+        elemIdx = colIdx * N + rowIdx ; 
+        c[elemIdx] = a[elemIdx] + b[elemIdx]; 
+    }
+}
+
 
 
 int main()
@@ -50,31 +76,46 @@ int main()
 	dim3 dimBlock( block_size, block_size );
     dim3 dimGrid(N/block_size, N/block_size);
     
-	//dim3 dimGrid(N/dimBlock.x, N/dimBlock.y);
 
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     cudaEventRecord(start);
-	add_matrix<<<dimGrid, dimBlock>>>(ad, bd, cd);
+    //cudaThreadSynchronize();
+    //ResetMilli();
+	add_matrix_gpu<<<dimGrid, dimBlock>>>(ad, bd, cd);
+    //cudaDeviceSynchronize();
+    //float milliseconds_gpu = GetSeconds();
 	cudaEventRecord(stop);
     cudaDeviceSynchronize();
     cudaEventSynchronize(stop);
-    float milliseconds;
-    cudaEventElapsedTime(&milliseconds, start, stop);
+    float milliseconds_gpu;
+    cudaEventElapsedTime(&milliseconds_gpu, start, stop);
+    printf("timing GPU coalescing: %f \n", milliseconds_gpu);
     cudaError_t err = cudaGetLastError();
-
     if (err != cudaSuccess)
         printf("Error: %s\n", cudaGetErrorString(err));
     
 	cudaMemcpy( c, cd, size, cudaMemcpyDeviceToHost ); 
-	cudaFree( cd );
 
-    cudaDeviceProp props;
-    cudaGetDeviceProperties(&props, 0);  // Assuming device 0
-
-    printf("Max grid dimensions: (%d, %d, %d)\n", props.maxGridSize[0], props.maxGridSize[1], props.maxGridSize[2]);
-     printf("Maximum threads per block: %d\n", props.maxThreadsPerBlock);
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    //cudaThreadSynchronize();
+    //ResetMilli();
+	add_matrix_gpu<<<dimGrid, dimBlock>>>(ad, bd, cd);
+    //cudaDeviceSynchronize();
+    //float milliseconds_gpu = GetSeconds();
+	cudaEventRecord(stop);
+    cudaDeviceSynchronize();
+    cudaEventSynchronize(stop);
+    cudaEventElapsedTime(&milliseconds_gpu, start, stop);
+    printf("timing GPU bad coalescing: %f \n", milliseconds_gpu);
+    err = cudaGetLastError();
+    if (err != cudaSuccess)
+        printf("Error: %s\n", cudaGetErrorString(err));
+    
+    
 
     
 	
@@ -86,10 +127,29 @@ int main()
 		}
 		printf("\n");
 	}*/
+
+    for (int i = 0; i < N; i++){
+		for (int j = 0; j < N; j++)
+		{
+			a[i + j * N] = 10 + i;
+			b[i + j * N] = (float)j / N;
+		}
+    }
+
+    ResetMilli();
+	add_matrix_cpu(a, b, c, N);
+	float milliseconds_cpu = GetSeconds();
+    printf("timing CPU: %f \n", milliseconds_cpu);
+
+    
+
 	delete[] c;
     delete[] b;
     delete[] a;
-    printf("timing %f \n", milliseconds);
+    cudaFree(ad);
+    cudaFree(bd);
+    cudaFree(cd);
+    
 	printf("done\n");
 	return EXIT_SUCCESS;
 }

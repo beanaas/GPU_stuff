@@ -208,8 +208,9 @@ int main(int argc, char* argv[])
 	});
 
 	std::cout << "Test3 \n";
-	std::cout << "Time: " << (timeTaken.count() / 10E6) << "\n";
+	
 	WritePngFileMatrix(outputMatrix, outputFileNamePad, colorType, imageInfo);
+	std::cout << "Time: " << (timeTaken.count() / 10E6) << "\n";
 	
 	
 	}
