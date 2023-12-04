@@ -12,3 +12,39 @@ We can use the indexes and the dimensions of the blocks in the y and x directtio
 ``
 *QUESTION: What happens if you use too many threads per block?*
 The result is just 0s, unspecified behavior?
+
+*At what data size is the GPU faster than the CPU?*
+Never? Måste kolla på detta mer
+
+*What block size seems like a good choice? Compared to what?* 
+32x32 0.015424 
+16x16 0.014208 
+8x8 0.020096
+16x16 gives the best computeperfomance compared to 8x8 and 32x32.
+
+*Write down your data size, block size and timing data for the best GPU performance you can get*
+N=4096
+Block_sie = 16x16
+timing GPU coalescing: 0.893056 
+
+*How much performance did you lose by making data accesses non-coalesced?*
+N=512 
+Block_size = 16x16
+timing GPU coalescing: 0.014208 
+timing GPU bad coalescing: 0.039840 
+
+So rougly 30 times worse.
+
+*What were the main changes in order to make the Mandelbrot run in CUDA?*
+We need to run the mandelbrot calculation on the GPU, so this should be a device kernel. For that to amke it work we needed to make the cuComplex struct a device kernel too, and make the user controlled parameter managed memory.
+In addition, the Draw() method is calling the kernel. 
+*How many blocks and threads did you use?*
+16x16 threas and 32x32 blocks.  
+*When you use the Complex class, what modifier did you have to use on the methods?*
+The struct should belong to the device, so (__device__) on every method that belongs to the struct.
+*What performance did you get? How does that compare to the CPU solution?*
+Roughly a 130x improvement if we use singleprecision.
+*What performance did you get with float vs double precision?*
+We can soome a lot further with double. But the GPU time is just 30x times better than the CPU. 
+*In Lab 1, load balancing was an important issue. Is that an issue here? Why/why not?*
+No, loadbalancing should not be an issue on the GPU. Because each threads takes a point in the block/grid and the work is evently distributed over each thread the loadbalancing should not be an issue. 
