@@ -15,7 +15,7 @@ The result is just 0s, unspecified behavior?
 
 *At what data size is the GPU faster than the CPU?*
 At N=64 the GPU is faster with blocksize 16
-
+![Alt text](image.png)
 *What block size seems like a good choice? Compared to what?* 
 16 worked good for us
 
