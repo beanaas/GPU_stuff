@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-// Image data
+// Image datasoome
 	unsigned char	*pixels = NULL;
 	__managed__ int	 gImageWidth, gImageHeight, size;
 	unsigned char 	*pixels_for_gpu = NULL;
