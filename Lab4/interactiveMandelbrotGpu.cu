@@ -34,7 +34,7 @@ void initBitmap(int width, int height)
 {
 	gImageWidth = width;
 	gImageHeight = height;
-	size = width * height*4;
+	size = width * height* 4;
 	if (pixels) free(pixels);
 	pixels = (unsigned char *)malloc(size);
 	if (pixels_for_gpu) cudaFree(pixels_for_gpu);
@@ -50,8 +50,6 @@ void initBitmap(int width, int height)
 __managed__ int maxiter = 200;
 __managed__ MYFLOAT offsetx = -200, offsety = 0, zoom = 0;
 __managed__ MYFLOAT scale = 1.5;
-
-
 // Complex number class
 __device__ struct cuComplex
 {

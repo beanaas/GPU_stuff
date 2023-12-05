@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 #include "milli.h"
-const int N = 512;
-const int block_size = 8; 
+const int N = 1024;
+const int block_size = 32; 
 
 void add_matrix_cpu(float *a, float *b, float *c, int N)
 {
@@ -91,7 +91,7 @@ int main()
     cudaEventSynchronize(stop);
     float milliseconds_gpu;
     cudaEventElapsedTime(&milliseconds_gpu, start, stop);
-    printf("timing GPU coalescing: %f \n", milliseconds_gpu);
+    printf("timing GPU coalescing: %f \n", milliseconds_gpu/1000);
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Error: %s\n", cudaGetErrorString(err));
@@ -101,23 +101,15 @@ int main()
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     cudaEventRecord(start);
-    //cudaThreadSynchronize();
-    //ResetMilli();
 	add_matrix_gpu<<<dimGrid, dimBlock>>>(ad, bd, cd);
-    //cudaDeviceSynchronize();
-    //float milliseconds_gpu = GetSeconds();
 	cudaEventRecord(stop);
     cudaDeviceSynchronize();
     cudaEventSynchronize(stop);
     cudaEventElapsedTime(&milliseconds_gpu, start, stop);
-    printf("timing GPU bad coalescing: %f \n", milliseconds_gpu);
+    printf("timing GPU bad coalescing: %f \n", milliseconds_gpu/1000);
     err = cudaGetLastError();
     if (err != cudaSuccess)
         printf("Error: %s\n", cudaGetErrorString(err));
-    
-    
-
-    
 	
 	/*for (int i = 0; i < N; i++)
 	{
@@ -141,10 +133,10 @@ int main()
 	float milliseconds_cpu = GetSeconds();
     printf("timing CPU: %f \n", milliseconds_cpu);
 
-    
-
 	delete[] c;
     delete[] b;
+    
+
     delete[] a;
     cudaFree(ad);
     cudaFree(bd);
