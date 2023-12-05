@@ -31,8 +31,8 @@
 #include "milli.h"
 
 // Use these for setting shared memory size.
-#define maxKernelSizeX 10
-#define maxKernelSizeY 10
+#define maxKernelSizeX 7
+#define maxKernelSizeY 7
 
 
 __global__ void filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
@@ -67,6 +67,51 @@ __global__ void filter(unsigned char *image, unsigned char *out, const unsigned 
 	}
 }
 
+
+__global__ void box_filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
+{ 
+  // map from blockIdx to pixel position
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	__shared__ unsigned char shared_data[maxKernelSizeY][maxKernelSizeX * 3]; // multiplied by three because pixels
+
+	int dy, dx;
+	unsigned int sumx, sumy, sumz;
+	int clamped_y = min(max(0, y), imagesizey-1);
+	int clamped_x = min(max(0, x), imagesizex-1);
+	
+
+	int divby = (2*kernelsizex+1)*(2*kernelsizey+1); // Works for box filters only!
+	
+	if (x < imagesizex && y < imagesizey){
+		shared_data[threadIdx.y][threadIdx.x*3+0] = image[(clamped_y*imagesizex+clamped_x)*3+0];
+		shared_data[threadIdx.y][threadIdx.x*3+1] = image[(clamped_y*imagesizex+clamped_x)*3+1];
+		shared_data[threadIdx.y][threadIdx.x*3+2] = image[(clamped_y*imagesizex+clamped_x)*3+2];
+
+		__syncthreads();
+		sumx=0;sumy=0;sumz=0;
+		for(dy=-kernelsizey;dy<=kernelsizey;dy++){
+
+			for(dx=-kernelsizex;dx<=kernelsizex;dx++)	
+			{
+				int yy = min(max(y+dy, 0), imagesizey-1);
+				int xx = min(max(x+dx, 0), imagesizex-1);
+				
+				sumx += shared_data[yy][xx*3+0];
+				sumy += shared_data[yy][xx*3+1];
+				sumz += shared_data[yy][xx*3+2];
+			}
+		}
+	out[(y*imagesizex+x)*3+0] = sumx/divby;
+	out[(y*imagesizex+x)*3+1] = sumy/divby;
+	out[(y*imagesizex+x)*3+2] = sumz/divby;
+	
+	}
+	
+}
+
+
 // Global variables for image data
 
 unsigned char *image, *pixels, *dev_bitmap, *dev_input;
@@ -82,13 +127,13 @@ void computeImages(int kernelsizex, int kernelsizey)
 		printf("Kernel size out of bounds!\n");
 		return;
 	}
-
 	pixels = (unsigned char *) malloc(imagesizex*imagesizey*3);
 	cudaMalloc( (void**)&dev_input, imagesizex*imagesizey*3);
 	cudaMemcpy( dev_input, image, imagesizey*imagesizex*3, cudaMemcpyHostToDevice );
 	cudaMalloc( (void**)&dev_bitmap, imagesizex*imagesizey*3);
-	dim3 grid(imagesizex,imagesizey);
-	filter<<<grid,1>>>(dev_input, dev_bitmap, imagesizex, imagesizey, kernelsizex, kernelsizey); // Awful load balance
+	dim3 block(16, 16);
+	dim3 grid(imagesizex, imagesizey);
+	box_filter2<<<grid,1>>>(dev_input, dev_bitmap, imagesizex, imagesizey, kernelsizex, kernelsizey); // Awful load balance
 	cudaDeviceSynchronize();
 //	Check for errors!
     cudaError_t err = cudaGetLastError();
