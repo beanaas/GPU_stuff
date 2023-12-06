@@ -31,8 +31,8 @@
 #include "milli.h"
 
 // Use these for setting shared memory size.
-#define maxKernelSizeX 7
-#define maxKernelSizeY 7
+#define maxKernelSizeX 10
+#define maxKernelSizeY 10
 
 
 __global__ void filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
@@ -70,7 +70,11 @@ __global__ void filter(unsigned char *image, unsigned char *out, const unsigned 
 
 __global__ void box_filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
 { 
-  // map from blockIdx to pixel position
+  // calculate the apron of the box
+	//int tilex = blockDim.x - kernelsizex;
+	//int tiley = blockDim.y - kernelsizey; 
+
+
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
 
@@ -80,8 +84,10 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 	unsigned int sumx, sumy, sumz;
 	int clamped_y = min(max(0, y), imagesizey-1);
 	int clamped_x = min(max(0, x), imagesizex-1);
-	
+	if(threadIdx.x == 1){
+	printf("image sizex: %d imagesizey: %d  kernel sizex: %d kernel sizey: %d\n", imagesizex, imagesizey, kernelsizex, kernelsizey);
 
+	}
 	int divby = (2*kernelsizex+1)*(2*kernelsizey+1); // Works for box filters only!
 	
 	if (x < imagesizex && y < imagesizey){
@@ -110,6 +116,58 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 	}
 	
 }
+__global__ void box_filter2(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
+{ 
+
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+	__shared__ unsigned char shared_data[maxKernelSizeY][maxKernelSizeX * 3]; // multiplied by three because pixels
+
+	int dy, dx;
+	unsigned int sumx, sumy, sumz;
+
+	//if(threadIdx.x == 1){
+	 //printf("image sizex: %d imagesizey: %d  kernel sizex: %d kernel sizey: %d\n", imagesizex, imagesizey, maxKernelSizeX * 3, maxKernelSizeY);
+
+	//}
+	int divby = (2*kernelsizex+1)*(2*kernelsizey+1); // Works for box filters only!
+
+	for(int yy = -kernelsizey; yy<= kernelsizey; yy++){
+		for(int xx = -kernelsizex; xx <= kernelsizex; xx++){
+			yy = yy+blockIdx.y*blockDim.y;
+			xx = xx+blockIdx.x*blockDim.x;
+			yy = min(max(yy, 0), imagesizey-1);
+			xx = min(max(xx, 0), imagesizex-1);
+			shared_data[threadIdx.y][threadIdx.x*3+0] =image[(yy*imagesizex+xx)*3+0];;
+			shared_data[threadIdx.y][threadIdx.x*3+1] = image[(yy*imagesizex+xx)*3+1];
+			shared_data[threadIdx.y][threadIdx.x*3+2] = image[(yy*imagesizex+xx)*3+2];
+		}
+	}
+	__syncthreads();	
+	if (x < imagesizex && y < imagesizey){
+
+		sumx=0;sumy=0;sumz=0;
+		for(dy=-kernelsizey;dy<=kernelsizey;dy++){
+			for(dx=-kernelsizex;dx<=kernelsizex;dx++)	
+			{
+				int yy = min(max(dy, 0), imagesizey-1);
+				int xx = min(max(dx, 0), imagesizex-1);
+				//printf("yy: %d, xx: %d \n", xx, yy);
+				
+				sumx += shared_data[yy][xx*3 + 0];
+				sumy += shared_data[yy][xx*3 + 1];
+				sumz += shared_data[yy][xx*3 + 2];
+				
+			}
+		}
+		out[(y*imagesizex+x)*3+0] = sumx/divby;
+		out[(y*imagesizex+x)*3+1] = sumy/divby;
+		out[(y*imagesizex+x)*3+2] = sumz/divby;
+	
+	}
+	
+}
 
 
 // Global variables for image data
@@ -131,10 +189,21 @@ void computeImages(int kernelsizex, int kernelsizey)
 	cudaMalloc( (void**)&dev_input, imagesizex*imagesizey*3);
 	cudaMemcpy( dev_input, image, imagesizey*imagesizex*3, cudaMemcpyHostToDevice );
 	cudaMalloc( (void**)&dev_bitmap, imagesizex*imagesizey*3);
-	dim3 block(16, 16);
-	dim3 grid(imagesizex, imagesizey);
-	box_filter2<<<grid,1>>>(dev_input, dev_bitmap, imagesizex, imagesizey, kernelsizex, kernelsizey); // Awful load balance
-	cudaDeviceSynchronize();
+	dim3 block(4, 4);
+	dim3 grid((imagesizex)/block.x, (imagesizey)/block.y);
+
+	cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    box_filter2<<<grid,block>>>(dev_input, dev_bitmap, imagesizex, imagesizey, kernelsizex, kernelsizey);
+	cudaEventRecord(stop);
+    cudaDeviceSynchronize();
+    cudaEventSynchronize(stop);
+    float milliseconds_gpu;
+    cudaEventElapsedTime(&milliseconds_gpu, start, stop);
+    printf("timing: %f \n", milliseconds_gpu/1000);
+
 //	Check for errors!
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess)
