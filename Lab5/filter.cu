@@ -16,6 +16,11 @@
 // 2017-12-04: More fixes: Tightened up the kernel with edge clamping.
 // Less code, nicer result (no borders). Cleaned up some messed up X and Y. b4
 // 2022-12-07: A correction for a deprecated function.
+//for running limited filter
+//nvcc -D SINGLE filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
+//runnning regular
+//nvcc filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,10 +35,10 @@
 #include "readppm.h"
 #include "milli.h"
 
-// Use these for setting shared memory size.
-#define maxKernelSizeX 10
-#define maxKernelSizeY 10
-#define BLOCK_SIZE 32
+// maxkernel is Maximum Shared Memory Per Block: 49152 = [BLOCK_SIZE+2*maxKernelSizeX][(BLOCK_SIZE+2*maxKernelSizeY)*3]
+#define maxKernelSizeX 48
+#define maxKernelSizeY 48
+#define maximum_allowed_shared_memory_size 
 
 __global__ void filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
 { 
@@ -66,41 +71,64 @@ __global__ void filter(unsigned char *image, unsigned char *out, const unsigned 
 	out[(y*imagesizex+x)*3+2] = sumz/divby;
 	}
 }
-
-
-
+#ifndef SINGLE
+#define BLOCK_SIZE 32
 __global__ void box_filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
-{ 
+{ 	int size = BLOCK_SIZE+2*kernelsizey;
+	
+	__shared__ unsigned char shared_data[BLOCK_SIZE+2*maxKernelSizeX][(BLOCK_SIZE+2*maxKernelSizeY)*3]; // multiplied by three because pixels
 
-	int x = blockIdx.x * blockDim.x + threadIdx.x;
-	int y = blockIdx.y * blockDim.y + threadIdx.y;
-	int size = BLOCK_SIZE+maxKernelSizeX*3;
-	__shared__ unsigned char shared_data[BLOCK_SIZE + maxKernelSizeY*3 ][(BLOCK_SIZE + maxKernelSizeX*3) * 3]; // multiplied by three because pixels
+	//int sizeInBytes = sizeof(shared_data);
+    //printf("Size of shared_data: %d bytes\n", sizeInBytes);
 
 	int dy, dx;
 	unsigned int sumx, sumy, sumz;
 
-	int divby = (2*kernelsizex+1)*(2*kernelsizey+1); // Works for box filters only!
-	if (x < imagesizex && y < imagesizey){
-
-
-		for(int idx_X = threadIdx.x; idx_X<(BLOCK_SIZE + maxKernelSizeX*3); idx_X += BLOCK_SIZE){
-			for(int idx_Y = threadIdx.y; idx_Y<(BLOCK_SIZE + maxKernelSizeY*3); idx_Y += BLOCK_SIZE){
-
-				int y1 = min(max(idx_Y + y - kernelsizey, 0), imagesizey-1);
-				int x1 = min(max(idx_X + x - kernelsizex, 0), imagesizex-1);
+	int x = blockIdx.x * blockDim.x + threadIdx.x;
+	int y = blockIdx.y * blockDim.y + threadIdx.y;
+	//coalesced and non coalesced, true = coalesced faster when many reads from global
+	if(false){
+		for(int yi =threadIdx.y; yi<size; yi += blockDim.y){
+			for(int xi = threadIdx.x; xi<size; xi += blockDim.x){
+				//global indexes
+				int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1);
+				int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
+			
+				int img_idx = clmp_yi * imagesizex + clmp_xi;
 				
-				shared_data[idx_Y][idx_X*3+0] =image[(y1*imagesizex+x1)*3+0];
-				shared_data[idx_Y][idx_X*3+1] =image[(y1*imagesizex+x1)*3+1];
-				shared_data[idx_Y][idx_X*3+2] =image[(y1*imagesizex+x1)*3+2];
+				shared_data[yi][xi*3+0] = image[img_idx*3+0];
+				shared_data[yi][xi*3+1] = image[img_idx*3+1];
+				shared_data[yi][xi*3+2] = image[img_idx*3+2];
+			}
 		}
+	}
+	else{
+		for(int xi = threadIdx.x; xi<size; xi += blockDim.x){
+			for(int yi =threadIdx.y; yi<size; yi += blockDim.y){
+				//global indexes
+				int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1);
+				int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
+			
+				int img_idx = clmp_yi * imagesizex + clmp_xi;
+				
+				shared_data[yi][xi*3+0] = image[img_idx*3+0];
+				shared_data[yi][xi*3+1] = image[img_idx*3+1];
+				shared_data[yi][xi*3+2] = image[img_idx*3+2];
+			}
 		}
-		__syncthreads();
+	}
 
-		
+	__syncthreads();
+
+	int divby = (2*kernelsizex+1)*(2*kernelsizey+1);
+	//only threads inside "blockimage" should have output
+	if (x < imagesizex && y < imagesizey) // If inside image
+	{
 		sumx=0;sumy=0;sumz=0;
-		for(dy = 0; dy <= kernelsizey*2; dy++){
-            for(dx = 0; dx <= kernelsizex*2; dx++) {
+
+		for(dy=0;dy<=kernelsizey*2;dy++){
+			for(dx=0;dx<=kernelsizex*2;dx++)	
+			{
 				int yy = dy + threadIdx.y;
 				int xx = dx + threadIdx.x;
 
@@ -109,13 +137,66 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 				sumz += shared_data[yy][xx*3 + 2];
 			}
 		}
-		out[(y*imagesizex+x)*3+0] =sumx/divby;
-		out[(y*imagesizex+x)*3+1] =sumy/divby;
-		out[(y*imagesizex+x)*3+2] =sumz/divby;
+		out[(y * imagesizex + x)*3+0] = sumx/divby;
+		out[(y * imagesizex + x)*3+1] =sumy/divby;
+		out[(y * imagesizex + x)*3+2] =sumz/divby;
+		}
+		
 	}
-}
+#endif
 
+#ifdef SINGLE
+#define BLOCK_SIZE 32
+//cant run when kernelsize exceds blocksize
+__global__ void box_filter2(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
+{ 
+	__shared__ unsigned char shared_data[BLOCK_SIZE][BLOCK_SIZE*3]; // multiplied by three because pixels
 
+	int dy, dx;
+	unsigned int sumx, sumy, sumz;
+
+	int internal_block_sizex = blockDim.x - 2*kernelsizex;
+	int internal_block_sizey = blockDim.y - 2*kernelsizey;
+
+	int x = blockIdx.x*internal_block_sizex + threadIdx.x - kernelsizex;
+	int y = blockIdx.y*internal_block_sizey + threadIdx.y - kernelsizey;
+
+	x = min(max(x, 0), imagesizex-1);
+	y = min(max(y, 0), imagesizey-1);
+
+	int img_idx = y * imagesizex + x;
+
+	shared_data[threadIdx.y][threadIdx.x*3+0] = image[img_idx*3+0];
+	shared_data[threadIdx.y][threadIdx.x*3+1] = image[img_idx*3+1];
+	shared_data[threadIdx.y][threadIdx.x*3+2] = image[img_idx*3+2];
+	
+	__syncthreads();
+
+	int divby = (2*kernelsizex+1)*(2*kernelsizey+1);
+	//only threads inside "blockimage" should have output
+	if (threadIdx.x >= kernelsizex && threadIdx.x < (blockDim.x - kernelsizex) &&
+        threadIdx.y >= kernelsizey && threadIdx.y < (blockDim.y - kernelsizey)) {
+		sumx=0;sumy=0;sumz=0;
+
+		for(dy=-kernelsizey;dy<=kernelsizey;dy++){
+			for(dx=-kernelsizex;dx<=kernelsizex;dx++)	
+			{
+				int yy = dy + threadIdx.y;
+				int xx = dx + threadIdx.x;
+
+				sumx += shared_data[yy][xx*3 + 0];
+				sumy += shared_data[yy][xx*3 + 1];
+				sumz += shared_data[yy][xx*3 + 2];
+			}
+		}
+		out[img_idx*3+0] =sumx/divby;
+		out[img_idx*3+1] =sumy/divby;
+		out[img_idx*3+2] =sumz/divby;
+		}
+		
+	}
+
+#endif
 // Global variables for image data
 
 unsigned char *image, *pixels, *dev_bitmap, *dev_input;
@@ -131,13 +212,34 @@ void computeImages(int kernelsizex, int kernelsizey)
 		printf("Kernel size out of bounds!\n");
 		return;
 	}
+	int device;
+    cudaGetDevice(&device);
+
+    int maxSharedMemory;
+    cudaDeviceGetAttribute(&maxSharedMemory, cudaDevAttrMaxSharedMemoryPerBlock, device);
+
+	printf("Maximum Shared Memory Per Block: %d \n" ,maxSharedMemory);
 	pixels = (unsigned char *) malloc(imagesizex*imagesizey*3);
 	cudaMalloc( (void**)&dev_input, imagesizex*imagesizey*3);
 	cudaMemcpy( dev_input, image, imagesizey*imagesizex*3, cudaMemcpyHostToDevice );
 	cudaMalloc( (void**)&dev_bitmap, imagesizex*imagesizey*3);
+	#ifdef SINGLE
 	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
-	dim3 grid((imagesizex)/block.x, (imagesizey)/block.y);
-
+	int tile_sizex = BLOCK_SIZE-2*kernelsizex;
+	int tile_sizey = BLOCK_SIZE-2*kernelsizey;
+	dim3 grid((imagesizex/tile_sizex)+1, (imagesizex/tile_sizey)+1);
+	cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    box_filter2<<<grid,block>>>(dev_input, dev_bitmap, imagesizex, imagesizey, kernelsizex, kernelsizey);
+	cudaEventRecord(stop);
+    cudaDeviceSynchronize();
+    cudaEventSynchronize(stop);
+	#endif
+	#ifndef SINGLE
+	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
+	dim3 grid(imagesizex/(BLOCK_SIZE)+1, imagesizex/(BLOCK_SIZE)+1);
 	cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -146,6 +248,7 @@ void computeImages(int kernelsizex, int kernelsizey)
 	cudaEventRecord(stop);
     cudaDeviceSynchronize();
     cudaEventSynchronize(stop);
+	#endif
     float milliseconds_gpu;
     cudaEventElapsedTime(&milliseconds_gpu, start, stop);
     printf("timing: %f \n", milliseconds_gpu/1000);
@@ -192,7 +295,7 @@ int main( int argc, char** argv)
 	if (argc > 1)
 		image = readppm(argv[1], (int *)&imagesizex, (int *)&imagesizey);
 	else
-		image = readppm((char *)"maskros512.ppm", (int *)&imagesizex, (int *)&imagesizey);
+		image = readppm((char *)"img1.ppm", (int *)&imagesizex, (int *)&imagesizey);
 
 	if (imagesizey >= imagesizex)
 		glutInitWindowSize( imagesizex*2, imagesizey );
@@ -203,7 +306,7 @@ int main( int argc, char** argv)
 
 	ResetMilli();
 
-	computeImages(10, 10);
+	computeImages(48, 48);
 
 // You can save the result to a file like this:
 //	writeppm("out.ppm", imagesizey, imagesizex, pixels);

@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 #include "milli.h"
-const int N = 1024;
-const int block_size = 32; 
+const int N = 4096;
+const int block_size = 16; 
 
 void add_matrix_cpu(float *a, float *b, float *c, int N)
 {
