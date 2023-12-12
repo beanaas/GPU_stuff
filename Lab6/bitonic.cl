@@ -20,6 +20,5 @@ __kernel void bitonic(__global unsigned int *data, int k, int j)
     }
   }
 
-  //Something should happen here
 
 }

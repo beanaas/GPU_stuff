@@ -20,8 +20,9 @@
 //nvcc -D SINGLE filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 //runnning regular
 //nvcc filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
-
+//nvcc -D BOX_FILTER filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 //nvcc -D SEPARABLE filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
+//nvcc -D GAUSS filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -539,7 +540,7 @@ int main( int argc, char** argv)
 	if (argc > 1)
 		image = readppm(argv[1], (int *)&imagesizex, (int *)&imagesizey);
 	else
-		image = readppm((char *)"baboon1.ppm", (int *)&imagesizex, (int *)&imagesizey);
+		image = readppm((char *)"maskros512.ppm", (int *)&imagesizex, (int *)&imagesizey);
 
 	if (imagesizey >= imagesizex)
 		glutInitWindowSize( imagesizex*2, imagesizey );
@@ -550,7 +551,7 @@ int main( int argc, char** argv)
 
 	ResetMilli();
 
-	computeImages(48, 48);
+	computeImages(5, 5);
 
 // You can save the result to a file like this:
 //	writeppm("out.ppm", imagesizey, imagesizex, pixels);

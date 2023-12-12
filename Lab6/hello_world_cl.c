@@ -57,27 +57,33 @@ int main(int argc, char** argv)
 	printf("%s ", a);
 
 
-  cl_platform_id platform;
-  unsigned int no_plat;
-  err =  clGetPlatformIDs(1,&platform,&no_plat);
-  printCLError(err,0);
+	cl_platform_id platform;
+	unsigned int no_plat;
+	//gets the platform used
+	err =  clGetPlatformIDs(1,&platform,&no_plat);
+	printCLError(err,0);
 
 	// Where to run
+	//from the platform get the GPU used
 	err = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &device_id, NULL);
    	printCLError(err,1);
 
+	//creating context for GPU
 	context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
    	printCLError(err,2);
 
+	//creates a queue for commands, api calls
 	commands = clCreateCommandQueueWithProperties(context, device_id, 0, &err);
    	printCLError(err,4);
 	
 	// What to run
+	//create OpenCL program object from the source code
 	program = clCreateProgramWithSource(context, 1, (const char **) & KernelSource, NULL, &err);
    	printCLError(err,5);
-
+	//builds the program
 	err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
    	printCLError(err,12);
+	//creates the kernel, "hello" is the kernel name
 	kernel = clCreateKernel(program, "hello", &err);
    	printCLError(err,6);
 	

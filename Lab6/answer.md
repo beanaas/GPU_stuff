@@ -39,9 +39,10 @@ So, according to the book, we should do the parts where the GPU is faster, where
 Each thread should produce two outputs, because we are swapping two values in each work item. 
 
 *How many items can you handle in one workgroup?*
-1024. Because we set the localWorkSize to 512 or the number of threads, whichever is the smallest. Because each workSize contains to workGroups, the maximal items in one WorkGroup is 1024.
+1024. Because we set the localWorkSize to 512 or the number of threads, whichever is the smallest. Because each workSize contains two workGroups, the maximal items in one WorkGroup is 1024. 2048 if we increase the localWorkSize to 1024 which is the maximum work group size. 
+
 *What problem must be solved when you use more than one workgroup? How did you solve it?*
-Synchronization and coordination among different workgroups. We don't think we have solved it?
+Synchronization and coordination among different workgroups. Mapping workgroups to array ranges is used to avoid synchronization issues. Since each workgroup handles a distinct range of the array to sort, no synchronization is needed between workgroups
 
 *What time do you get? Difference to the CPU? What is the break even size? What can you expect for a parallel CPU version? (Your conclusions here may vary between the labs.)*
 4096 is the break even size. Probably faster then the single core? Maybe even then the GPU because not needing to copy memory here and there?
