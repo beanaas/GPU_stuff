@@ -23,6 +23,7 @@
 //nvcc -D BOX_FILTER filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 //nvcc -D SEPARABLE filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 //nvcc -D GAUSS filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
+//nvcc -D MEDIAN filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,7 +77,7 @@ __global__ void filter(unsigned char *image, unsigned char *out, const unsigned 
 __global__ void box_filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
 { 	int size = BLOCK_SIZE+2*kernelsizey;
 	
-	__shared__ unsigned char shared_data[BLOCK_SIZE+2*maxKernelSizeX][(BLOCK_SIZE+2*maxKernelSizeY)*3]; // multiplied by three because pixel
+	__shared__ unsigned char shared_data[BLOCK_SIZE+2*maxKernelSizeY][(BLOCK_SIZE+2*maxKernelSizeX)*3]; // multiplied by three because pixel
 
 	int dy, dx;
 	unsigned int sumx, sumy, sumz;
@@ -89,7 +90,7 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 		for(int xi = threadIdx.x; xi<BLOCK_SIZE+2*kernelsizex; xi += blockDim.x){
 			//global indexes
 			int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1);
-			int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
+            int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
 		
 			int img_idx = clmp_yi * imagesizex + clmp_xi;
 			
@@ -113,7 +114,6 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 			{
 				int yy = dy + threadIdx.y;
 				int xx = dx + threadIdx.x;
-
 				sumx += shared_data[yy][xx*3 + 0];
 				sumy += shared_data[yy][xx*3 + 1];
 				sumz += shared_data[yy][xx*3 + 2];
@@ -140,7 +140,7 @@ __global__ void gauss_filter(unsigned char *image, unsigned char *out, const uns
 		for(int xi = threadIdx.x; xi<BLOCK_SIZE+2*kernelsizex; xi += blockDim.x){
 			//global indexes
 			int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1);
-			int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
+            int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
 		
 			int img_idx = clmp_yi * imagesizex + clmp_xi;
 			
@@ -179,85 +179,6 @@ __global__ void gauss_filter(unsigned char *image, unsigned char *out, const uns
 		
 }
 
-__global__ void median_filter2(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
-{   
-    __shared__ unsigned char shared_data[BLOCK_SIZE+2*maxKernelSizeX][(BLOCK_SIZE+2*maxKernelSizeY)*3]; // multiplied by three because pixels
-
-    int dy, dx;
-    unsigned int sumx, sumy, sumz;
-
-    int x = blockIdx.x * blockDim.x + threadIdx.x;
-    int y = blockIdx.y * blockDim.y + threadIdx.y;
-    
-    // coalesced and non-coalesced, true = coalesced faster when many reads from global
-    for(int yi = threadIdx.y; yi < BLOCK_SIZE+2*kernelsizey; yi += blockDim.y){
-        for(int xi = threadIdx.x; xi < BLOCK_SIZE+2*kernelsizex; xi += blockDim.x){
-            // global indexes
-            int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1);
-            int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
-            
-            int img_idx = clmp_yi * imagesizex + clmp_xi;
-            
-            shared_data[yi][xi*3+0] = image[img_idx*3+0];
-            shared_data[yi][xi*3+1] = image[img_idx*3+1];
-            shared_data[yi][xi*3+2] = image[img_idx*3+2];
-        }
-    }
-    
-    __syncthreads();
-
-    // only threads inside "blockimage" should have output
-    if (x < imagesizex && y < imagesizey) // If inside image
-    {
-        sumx=0; sumy=0; sumz=0;
-        unsigned char red_values[(2*maxKernelSizeX + 1) * (2*maxKernelSizeY + 1)];
-        unsigned char green_values[(2*maxKernelSizeX + 1) * (2*maxKernelSizeY + 1)];
-        unsigned char blue_values[(2*maxKernelSizeX + 1) * (2*maxKernelSizeY + 1)];
-
-        int index = 0;
-
-        // Collect pixel values in the neighborhood
-        for(dx = 0; dx <= kernelsizex*2; dx++){
-            for(dy = 0; dy <= kernelsizey*2; dy++) {
-                int yy = dy + threadIdx.y;
-                int xx = dx + threadIdx.x;
-                red_values[index] = shared_data[yy][xx*3+0];
-                green_values[index] = shared_data[yy][xx*3+1];
-                blue_values[index] = shared_data[yy][xx*3+2];
-                index++;
-            }
-        }
-
-        // Bubble Sort the pixel values
-        for (int i = 0; i < index - 1; i++) {
-            for (int j = 0; j < index - i - 1; j++) {
-                if (red_values[j] > red_values[j+1]) {
-                    // Swap values
-                    unsigned char temp = red_values[j];
-                    red_values[j] = red_values[j+1];
-                    red_values[j+1] = temp;
-                }
-                if (green_values[j] > green_values[j+1]) {
-                    // Swap values
-                    unsigned char temp = green_values[j];
-                    green_values[j] = green_values[j+1];
-                    green_values[j+1] = temp;
-                }
-                if (blue_values[j] > blue_values[j+1]) {
-                    // Swap values
-                    unsigned char temp = blue_values[j];
-                    blue_values[j] = blue_values[j+1];
-                    blue_values[j+1] = temp;
-                }
-            }
-        }
-
-        // Find the median value for each channel
-        out[(y * imagesizex + x)*3 + 0] = red_values[index/2];
-        out[(y * imagesizex + x)*3 + 1] = green_values[index/2];
-        out[(y * imagesizex + x)*3 + 2] = blue_values[index/2];
-    }   
-}
 
 __global__ void median_filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
 {   
