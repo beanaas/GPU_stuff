@@ -85,6 +85,8 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
 	int y = blockIdx.y * blockDim.y + threadIdx.y;
 	//coalesced and non coalesced, true = coalesced faster when many reads from global
+	//This is not coalesced. If we would have 4 pixels then the memory access would be coalesced, because we can split the data in 32-bits, even. 
+	//To make it coalasced we could read an extra pixel, but could lead to a lot of overhead.Maybe that's why RGBA exists? 
 
 	for(int yi =threadIdx.y; yi<BLOCK_SIZE+2*kernelsizey; yi += blockDim.y){
 		for(int xi = threadIdx.x; xi<BLOCK_SIZE+2*kernelsizex; xi += blockDim.x){
