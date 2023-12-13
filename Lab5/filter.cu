@@ -22,7 +22,7 @@
 //nvcc filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 //nvcc -D BOX_FILTER filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 //nvcc -D SEPARABLE filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
-//nvcc -D GAUSS filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
+//nvcc -D GAUSS filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -	lcudart -L/usr/local/cuda/lib && ./filter
 //nvcc -D MEDIAN filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 #include <stdio.h>
 #include <stdlib.h>
@@ -91,10 +91,10 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 	for(int yi =threadIdx.y; yi<BLOCK_SIZE+2*kernelsizey; yi += blockDim.y){
 		for(int xi = threadIdx.x; xi<BLOCK_SIZE+2*kernelsizex; xi += blockDim.x){
 			//global indexes
-			int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1); //blockidx-x*blockdim.x +xi ger oss en pixel i bilden. men vi vill ha en realtiv med kerneln, så minus kernelsizex
-            int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
+			int clmp_xi = min(max(blockIdx.x * blockDim.x + xi, 0), imagesizex-1);
+            int clmp_yi = min(max(blockIdx.y * blockDim.y + yi, 0), imagesizey-1);
 		
-			int img_idx = clmp_yi * imagesizex + clmp_xi; //ge oss det globala image idn 
+			int img_idx = clmp_yi * imagesizex + clmp_xi;
 			
 			shared_data[yi][xi*3+0] = image[img_idx*3+0];
 			shared_data[yi][xi*3+1] = image[img_idx*3+1];
@@ -106,7 +106,18 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 	__syncthreads();
 
 	int divby = (2*kernelsizex+1)*(2*kernelsizey+1);
+	/*
+	if (x < imagesizex && y < imagesizey && blockIdx.y == 0) // If inside image
+	{
+
+		out[(y * imagesizex + x)*3+0] = shared_data[threadIdx.y][(threadIdx.x)*3 + 0];
+		out[(y * imagesizex + x)*3+1] = shared_data[threadIdx.y][(threadIdx.x)*3 + 1];
+		out[(y * imagesizex + x)*3+2] = shared_data[threadIdx.y][(threadIdx.x)*3 + 2];
+	}*/
+	
+	
 	//only threads inside "blockimage" should have output
+	
 	if (x < imagesizex && y < imagesizey) // If inside image
 	{
 		sumx=0;sumy=0;sumz=0;
@@ -114,6 +125,7 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 		for(dx=0;dx<=kernelsizex*2;dx++){
 			for(dy=0;dy<=kernelsizey*2;dy++)	
 			{
+				
 				int yy = dy + threadIdx.y;
 				int xx = dx + threadIdx.x;
 				sumx += shared_data[yy][xx*3 + 0];
@@ -125,6 +137,7 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 		out[(y * imagesizex + x)*3+1] =sumy/divby;
 		out[(y * imagesizex + x)*3+2] =sumz/divby;
 		}
+		
 		
 	}
 
@@ -141,8 +154,8 @@ __global__ void gauss_filter(unsigned char *image, unsigned char *out, const uns
 	for(int yi =threadIdx.y; yi<BLOCK_SIZE+2*kernelsizey; yi += blockDim.y){
 		for(int xi = threadIdx.x; xi<BLOCK_SIZE+2*kernelsizex; xi += blockDim.x){
 			//global indexes
-			int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1);
-            int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
+			int clmp_xi = min(max(blockIdx.x * blockDim.x + xi, 0), imagesizex-1);
+            int clmp_yi = min(max(blockIdx.y * blockDim.y + yi, 0), imagesizey-1);
 		
 			int img_idx = clmp_yi * imagesizex + clmp_xi;
 			
@@ -181,8 +194,77 @@ __global__ void gauss_filter(unsigned char *image, unsigned char *out, const uns
 		
 }
 
-
 __global__ void median_filter(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
+{   
+    __shared__ unsigned char shared_data[BLOCK_SIZE+2*maxKernelSizeX][(BLOCK_SIZE+2*maxKernelSizeY)*3]; // multiplied by three because pixels
+
+    int dy, dx;
+    unsigned int sumx, sumy, sumz;
+
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    for(int yi = threadIdx.y; yi < BLOCK_SIZE+2*kernelsizey; yi += blockDim.y){
+        for(int xi = threadIdx.x; xi < BLOCK_SIZE+2*kernelsizex; xi += blockDim.x){
+            int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1);
+            int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
+
+            int img_idx = clmp_yi * imagesizex + clmp_xi;
+
+            shared_data[yi][xi*3+0] = image[img_idx*3+0];
+            shared_data[yi][xi*3+1] = image[img_idx*3+1];
+            shared_data[yi][xi*3+2] = image[img_idx*3+2];
+        }
+    }
+
+    __syncthreads();
+
+    if (x < imagesizex && y < imagesizey) // If inside image
+    {
+        sumx=0; sumy=0; sumz=0;
+        unsigned char red_values[(2*maxKernelSizeX + 1) * (2*maxKernelSizeY + 1)];
+        unsigned char green_values[(2*maxKernelSizeX + 1) * (2*maxKernelSizeY + 1)];
+        unsigned char blue_values[(2*maxKernelSizeX + 1) * (2*maxKernelSizeY + 1)];
+
+        int index = 0;
+        for(dx = 0; dx <= kernelsizex*2; dx++){
+            for(dy = 0; dy <= kernelsizey*2; dy++) {
+                int yy = dy + threadIdx.y;
+                int xx = dx + threadIdx.x;
+                red_values[index] = shared_data[yy][xx*3+0];
+                green_values[index] = shared_data[yy][xx*3+1];
+                blue_values[index] = shared_data[yy][xx*3+2];
+                index++;
+            }
+        }
+
+        // Bubble Sort the pixel values
+        for (int i = 0; i < index - 1; i++) {
+            for (int j = 0; j < index - i - 1; j++) {
+                if (red_values[j] > red_values[j+1]) {
+                    unsigned char temp = red_values[j];
+                    red_values[j] = red_values[j+1];
+                    red_values[j+1] = temp;
+                }
+                if (green_values[j] > green_values[j+1]) {
+                    unsigned char temp = green_values[j];
+                    green_values[j] = green_values[j+1];
+                    green_values[j+1] = temp;
+                }
+                if (blue_values[j] > blue_values[j+1]) {
+                    unsigned char temp = blue_values[j];
+                    blue_values[j] = blue_values[j+1];
+                    blue_values[j+1] = temp;
+                }
+            }
+        }
+        out[(y * imagesizex + x)*3 + 0] = red_values[index/2];
+        out[(y * imagesizex + x)*3 + 1] = green_values[index/2];
+        out[(y * imagesizex + x)*3 + 2] = blue_values[index/2];
+    }   
+}
+
+__global__ void median_filter2(unsigned char *image, unsigned char *out, const unsigned int imagesizex, const unsigned int imagesizey, const int kernelsizex, const int kernelsizey)
 {   
     __shared__ unsigned char shared_data[BLOCK_SIZE+2*maxKernelSizeX][(BLOCK_SIZE+2*maxKernelSizeY)*3]; // multiplied by three because pixels
 
@@ -338,6 +420,7 @@ void computeImages(int kernelsizex, int kernelsizey)
 	cudaMalloc( (void**)&dev_bitmap, imagesizex*imagesizey*3);
 	cudaEvent_t start, stop;
 	//another implementation of box filter
+	//nvcc -D SINGLE filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 	#ifdef SINGLE
 	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	int tile_sizex = BLOCK_SIZE-2*kernelsizex;
@@ -352,6 +435,7 @@ void computeImages(int kernelsizex, int kernelsizey)
     cudaEventSynchronize(stop);
 	#endif
 	//box filter gpu
+	//nvcc -D BOX_FILTER filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 	#ifdef BOX_FILTER
 	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 grid(imagesizex/(BLOCK_SIZE), imagesizex/(BLOCK_SIZE));
@@ -364,6 +448,7 @@ void computeImages(int kernelsizex, int kernelsizey)
     cudaEventSynchronize(stop);
 	#endif
 	//ordinary gauss
+	//nvcc -D GAUSS filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 	#ifdef GAUSS
 	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 grid(imagesizex/(BLOCK_SIZE), imagesizex/(BLOCK_SIZE));
@@ -377,6 +462,7 @@ void computeImages(int kernelsizex, int kernelsizey)
     cudaEventSynchronize(stop);
 	#endif
 	//gauss separable
+	//nvcc -D GAUSS_SEPARABLE filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 	#ifdef GAUSS_SEPARABLE
 	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 grid(imagesizex/(BLOCK_SIZE), imagesizex/(BLOCK_SIZE));
@@ -392,9 +478,10 @@ void computeImages(int kernelsizex, int kernelsizey)
     cudaEventSynchronize(stop);
 	#endif
 	//sep boxfilter
+	//nvcc -D SEPARABLE filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 	#ifdef SEPARABLE
 	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
-	dim3 grid(imagesizex/(BLOCK_SIZE)+1, imagesizex/(BLOCK_SIZE)+1);
+	dim3 grid(imagesizex/(BLOCK_SIZE), imagesizex/(BLOCK_SIZE));
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
     cudaEventRecord(start);
@@ -404,7 +491,7 @@ void computeImages(int kernelsizex, int kernelsizey)
     cudaDeviceSynchronize();
     cudaEventSynchronize(stop);
 	#endif
-
+	//nvcc -D MEDIAN filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
 	#ifdef MEDIAN
 	dim3 block(BLOCK_SIZE, BLOCK_SIZE);
 	dim3 grid(imagesizex/(BLOCK_SIZE), imagesizex/(BLOCK_SIZE));
@@ -412,6 +499,17 @@ void computeImages(int kernelsizex, int kernelsizey)
     cudaEventCreate(&stop);
     cudaEventRecord(start);
     median_filter<<<grid,block>>>(dev_input, dev_bitmap, imagesizex, imagesizey, kernelsizex, kernelsizey);
+	cudaEventRecord(stop);
+    cudaDeviceSynchronize();
+    cudaEventSynchronize(stop);
+	#endif
+	//nvcc -D CPU filter.cu -c -arch=sm_30 -o filter.o && g++ -o filter filter.o milli.c readppm.c -lGL -lm -lGLU -lglut -lcuda -lcudart -L/usr/local/cuda/lib && ./filter
+	#ifdef CPU
+	cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+	dim3 grid(imagesizex,imagesizey);
+	filter<<<grid,1>>>(dev_input, dev_bitmap, imagesizex, imagesizey, kernelsizex, kernelsizey); // Awful load balance
 	cudaEventRecord(stop);
     cudaDeviceSynchronize();
     cudaEventSynchronize(stop);
@@ -474,10 +572,9 @@ int main( int argc, char** argv)
 
 	ResetMilli();
 
-	computeImages(5, 5);
+	computeImages(40, 40);
 
-// You can save the result to a file like this:
-//	writeppm("out.ppm", imagesizey, imagesizex, pixels);
+	writeppm("boxfilter_40x40.ppm", imagesizey, imagesizex, pixels);
 
 	glutMainLoop();
 	return 0;

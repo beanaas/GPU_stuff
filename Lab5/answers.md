@@ -1,6 +1,6 @@
 QUESTION: How much data did you put in shared memory?
 
-[BLOCK_SIZE+2*maxKernelSizeX][(BLOCK_SIZE+2*maxKernelSizeY)*3]
+[BLOCK_SIZE+2*kernelsizey][(BLOCK_SIZE+2*kernelsizex)*3]
 
 QUESTION: How much data does each thread copy to shared memory?
 
