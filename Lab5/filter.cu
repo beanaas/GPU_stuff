@@ -91,10 +91,10 @@ __global__ void box_filter(unsigned char *image, unsigned char *out, const unsig
 	for(int yi =threadIdx.y; yi<BLOCK_SIZE+2*kernelsizey; yi += blockDim.y){
 		for(int xi = threadIdx.x; xi<BLOCK_SIZE+2*kernelsizex; xi += blockDim.x){
 			//global indexes
-			int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1);
+			int clmp_xi = min(max(blockIdx.x * blockDim.x + xi - kernelsizex, 0), imagesizex-1); //blockidx-x*blockdim.x +xi ger oss en pixel i bilden. men vi vill ha en realtiv med kerneln, så minus kernelsizex
             int clmp_yi = min(max(blockIdx.y * blockDim.y + yi - kernelsizey, 0), imagesizey-1);
 		
-			int img_idx = clmp_yi * imagesizex + clmp_xi;
+			int img_idx = clmp_yi * imagesizex + clmp_xi; //ge oss det globala image idn 
 			
 			shared_data[yi][xi*3+0] = image[img_idx*3+0];
 			shared_data[yi][xi*3+1] = image[img_idx*3+1];
